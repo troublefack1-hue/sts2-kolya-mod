@@ -30,6 +30,8 @@ public static class ShopReroll
 
     static void Postfix(NMerchantInventory __instance, MerchantInventory inventory)
     {
+        // в совместной игре кнопка меняла бы золото и товары мимо синхронизации — пока только одиночная игра
+        if (inventory.Player.RunState.Players.Count > 1) return;
         int rerolls = 0;
         int Price() => BaseCost() + MerchantCardRemovalEntry.PriceIncrease * rerolls;
 

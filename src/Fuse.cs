@@ -19,7 +19,7 @@ namespace KolyaMod;
 
 // «Слияние» у костра: две копии одной карты становятся одной. Уровни улучшений складываются и дают ещё +1,
 // сила одинаковых зачарований складывается, зачарование второй карты переходит на пустую первую.
-// Разные зачарования пока не складываются: первая карта оставляет своё (нужны несколько зачарований на карте).
+// Разные зачарования переходят на итоговую карту все (MultiEnchant).
 public sealed class FuseRestSiteOption : RestSiteOption
 {
     public const string Id = "KOLYA_FUSE";
@@ -51,16 +51,14 @@ public sealed class FuseRestSiteOption : RestSiteOption
         // само слияние даёт ещё один уровень: итог = уровень первой + уровень второй + 1
         for (int i = 0; i < second.CurrentUpgradeLevel + 1 && first.IsUpgradable; i++)
             CardCmd.Upgrade(first, CardPreviewStyle.None);
-        var extra = second.Enchantment;
-        if (extra != null)
+        // все зачарования второй карты переходят на первую; одинаковые складываются по силе
+        foreach (var e in MultiEnchant.All(second).ToList())
         {
-            if (first.Enchantment == null && extra.CanonicalInstance is EnchantmentModel canon)
-                CardCmd.Enchant(canon.ToMutable(), first, extra.Amount);
-            else if (first.Enchantment != null && first.Enchantment.Id == extra.Id)
-                first.Enchantment.Amount += extra.Amount;
+            var copy = ModelDb.GetById<EnchantmentModel>(e.Id).ToMutable();
+            if (copy.CanEnchant(first)) CardCmd.Enchant(copy, first, e.Amount);
         }
         await CardPileCmd.RemoveFromDeck(second);
-        Log.Info($"[kolya_mod] слияние: {first.Id} +{first.CurrentUpgradeLevel}, зачарование {first.Enchantment?.Id} {first.Enchantment?.Amount}");
+        Log.Info($"[kolya_mod] слияние: {first.Id} +{first.CurrentUpgradeLevel}, зачарования: {string.Join(", ", MultiEnchant.All(first).Select(e => $"{e.Id.Entry} {e.Amount}"))}");
         return true;
     }
 }
@@ -102,6 +100,10 @@ public static class FuseText
         ["OPTION_KOLYA_FUSE.descriptionDisabled"] = "В колоде нет двух одинаковых карт.",
         ["KOLYA_FUSE_PROMPT_1"] = "Выберите карту для слияния",
         ["KOLYA_FUSE_PROMPT_2"] = "Выберите вторую такую же карту",
+        ["KOLYA_MULTI_ENCHANTMENT.title"] = "Несколько зачарований",
+        ["KOLYA_MULTI_ENCHANTMENT.description"] = "На карте несколько зачарований, каждое действует.",
+        ["KOLYA_ELITE_REWARD_PROMPT"] = "Трофей мутации: выберите карту для зачарования",
+        ["STURDY_CLAMP.description"] = "В начале каждого хода получите [blue]{Block}[/blue] [gold]блока[/gold].",
     };
 
     [HarmonyPrefix, HarmonyPatch(nameof(LocTable.GetRawText))]

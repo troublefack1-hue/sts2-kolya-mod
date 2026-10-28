@@ -5,12 +5,18 @@ using MegaCrit.Sts2.Core.Runs;
 
 namespace KolyaMod;
 
-// Акты 1–3 ванильные; дальше сила врагов растёт на 1/7 за акт, и в акте 10 она ×2,0,
-// то есть враги десятого акта (он всегда третьего типа, см. MoreActs) вдвое сильнее третьего.
+// Акты 1–3 ванильные; дальше сила врагов растёт с ускорением (степень 1,5): акт 4 ×1,11, 5 ×1,31,
+// 6 ×1,57, 7 ×1,87, 8 ×2,22, 9 ×2,60, 10 ×3,0. Начало ощутимое, к концу рост круче.
+// Враги десятого акта (он всегда третьего типа, см. MoreActs) втрое сильнее третьего.
 public static class EnemyScaling
 {
+    public const decimal Top = 3m;
+
     public static decimal Multiplier(int actIndex) =>
-        1m + System.Math.Clamp(actIndex - 2, 0, MoreActs.TotalActs - 3) / (decimal)(MoreActs.TotalActs - 3);
+        1m + (Top - 1m) * Square(System.Math.Clamp(actIndex - 2, 0, MoreActs.TotalActs - 3) / (decimal)(MoreActs.TotalActs - 3));
+
+    // показатель 1,5: между ровным ростом и квадратом — начало не скучное, конец круче
+    static decimal Square(decimal x) => (decimal)System.Math.Pow((double)x, 1.5);
 }
 
 [HarmonyPatch(typeof(Creature), nameof(Creature.ScaleMonsterHpForMultiplayer))]
