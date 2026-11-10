@@ -1,6 +1,20 @@
-# Kolya Mod (Slay the Spire 2) — статус на 28.10.2026, 20:55
+# Kolya Mod (Slay the Spire 2) — статус на 10.11.2026, 15:15
 
-Версия 0.3.0. Ссылка (всегда последняя): https://github.com/troublefack1-hue/sts2-kolya-mod/releases/latest/download/KolyaMod_StS2.zip
+Версия 0.3.3. Ссылка (всегда последняя): https://github.com/troublefack1-hue/sts2-kolya-mod/releases/latest/download/KolyaMod_StS2.zip
+
+## Изменено в 0.3.3 (10.11)
+- Слияние: к сумме уровней добавлен бонус +1 (две «+2» → «+6», уровень 7). Решение Коли.
+
+## Изменено в 0.3.2 (10.11)
+- Слияние: формула не менялась (уровни складываются: две «+2» → «+5», уровень 6),
+  но код переписан на явную формулу, лог показывает обе исходные карты
+  («уровень A + B = C»), описание у костра объясняет правило с примером.
+
+## Исправлено в 0.3.1 (10.11)
+- Кооператив: вылет при переходе в 4-й акт (ArgumentOutOfRangeException: Invalid act index
+  for HP scaling). Ванильная таблица масштабирования под число игроков знает только 3 акта;
+  для актов 4+ берётся строка 3-го акта (EnemyScaling.cs, MultiplayerScalingActClamp).
+  Сейв кооп-забега, стоящий на бое 4-го акта, после фикса загружается.
 Сборка: `cd src && dotnet build -c Release` — кладёт DLL, манифест и иконку в mods/kolya_mod игры (если игра закрыта).
 Запуск: только `steam://rungameid/2868840`. Лог: %APPDATA%/SlayTheSpire2/logs/godot.log, строки `[kolya_mod]`.
 
@@ -32,3 +46,7 @@
 - Любая случайность — только игровым генератором (runState.Rng.Niche), иначе рассинхрон в кооперативе.
 - Новые сохраняемые поля регистрировать в SavedPropertiesTypeCache (NetSafety.cs), иначе зависание по сети.
 - Действия, меняющие золото/колоду мимо очереди действий игры, ломают кооператив.
+- Системного dotnet нет; SDK 9 лежит локально в .dotnet/ (в .gitignore). Для сборки нужны
+  переменные PROGRAMDATA/ProgramFiles/SystemRoot и NUGET_PACKAGES — см. историю 10.11.
+- Игра стоит дважды: E:\Steam (csproj копирует туда) и E:\SteamLibrary (реально запускаемая,
+  по логам). После сборки DLL и манифест копировать и в SteamLibrary вручную.

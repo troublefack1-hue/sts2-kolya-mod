@@ -48,8 +48,12 @@ public sealed class FuseRestSiteOption : RestSiteOption
             c => c != first && c.Id == first.Id)).FirstOrDefault();
         if (second == null) return false;
 
-        // само слияние даёт ещё один уровень: итог = уровень первой + уровень второй + 1
-        for (int i = 0; i < second.CurrentUpgradeLevel + 1 && first.IsUpgradable; i++)
+        // Правило: уровень карты = 1 + число улучшений; при слиянии уровни складываются
+        // и слияние даёт ещё +1. Две карты «+2» (уровень 3 каждая) дают карту «+6» — уровень 7.
+        int fromFirst = first.CurrentUpgradeLevel + 1, fromSecond = second.CurrentUpgradeLevel + 1;
+        int levels = fromFirst + fromSecond + 1;
+        int target = levels - 1; // итоговое число улучшений
+        while (first.CurrentUpgradeLevel < target && first.IsUpgradable)
             CardCmd.Upgrade(first, CardPreviewStyle.None);
         // все зачарования второй карты переходят на первую; одинаковые складываются по силе
         foreach (var e in MultiEnchant.All(second).ToList())
@@ -58,7 +62,7 @@ public sealed class FuseRestSiteOption : RestSiteOption
             if (copy.CanEnchant(first)) CardCmd.Enchant(copy, first, e.Amount);
         }
         await CardPileCmd.RemoveFromDeck(second);
-        Log.Info($"[kolya_mod] слияние: {first.Id} +{first.CurrentUpgradeLevel}, зачарования: {string.Join(", ", MultiEnchant.All(first).Select(e => $"{e.Id.Entry} {e.Amount}"))}");
+        Log.Info($"[kolya_mod] слияние: {first.Id} уровень {fromFirst} + {fromSecond} = {levels} (+{first.CurrentUpgradeLevel}), зачарования: {string.Join(", ", MultiEnchant.All(first).Select(e => $"{e.Id.Entry} {e.Amount}"))}");
         return true;
     }
 }
@@ -96,7 +100,7 @@ public static class FuseText
     static readonly Dictionary<string, string> Text = new()
     {
         ["OPTION_KOLYA_FUSE.name"] = "Слияние",
-        ["OPTION_KOLYA_FUSE.description"] = "Слить две одинаковые карты в одну: улучшения складываются и дают ещё +1, зачарования складываются.",
+        ["OPTION_KOLYA_FUSE.description"] = "Слить две одинаковые карты в одну: уровни складываются и дают ещё +1 (две «+2» дадут одну «+6» — уровень 7), зачарования объединяются.",
         ["OPTION_KOLYA_FUSE.descriptionDisabled"] = "В колоде нет двух одинаковых карт.",
         ["KOLYA_FUSE_PROMPT_1"] = "Выберите карту для слияния",
         ["KOLYA_FUSE_PROMPT_2"] = "Выберите вторую такую же карту",

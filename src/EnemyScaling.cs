@@ -1,6 +1,8 @@
 using HarmonyLib;
 using MegaCrit.Sts2.Core.Entities.Creatures;
 using MegaCrit.Sts2.Core.Hooks;
+using MegaCrit.Sts2.Core.Models;
+using MegaCrit.Sts2.Core.Models.Singleton;
 using MegaCrit.Sts2.Core.Runs;
 
 namespace KolyaMod;
@@ -39,4 +41,14 @@ public static class EnemyDamageScaling
         if (dealer == null || !dealer.IsMonster) return;
         __result = decimal.Floor(__result * EnemyScaling.Multiplier(runState.CurrentActIndex));
     }
+}
+
+// Кооператив: ванильная таблица масштабирования под число игроков знает только 3 акта
+// и бросает ArgumentOutOfRangeException на 4-м. Для актов 4+ берём строку последнего
+// ванильного акта; наш множитель (EnemyHpScaling/EnemyDamageScaling) применяется поверх.
+[HarmonyPatch(typeof(MultiplayerScalingModel), nameof(MultiplayerScalingModel.GetMultiplayerScaling))]
+public static class MultiplayerScalingActClamp
+{
+    static void Prefix(ref int actIndex) =>
+        actIndex = System.Math.Clamp(actIndex, 0, ModelDb.ActsByIndex.Count - 1);
 }
