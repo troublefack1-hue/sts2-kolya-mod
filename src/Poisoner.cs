@@ -13,14 +13,16 @@ using MegaCrit.Sts2.Core.ValueProps;
 namespace KolyaMod;
 
 // Мутация «Отравитель»: каждая атака врага по игроку (даже в блок) накладывает яд.
-// Яд: 2 в 4-м акте, +1 за акт, 8 в 10-м.
+// Яд: 1 на актах 1–3, 2 в 4-м акте, +1 за акт, 8 в 10-м.
 public static class Poisoner
 {
     static readonly ConditionalWeakTable<Creature, object> Marked = new();
 
     public static void Mark(Creature c) => Marked.AddOrUpdate(c, true);
 
-    public static int PoisonFor(int actIndex) => System.Math.Max(actIndex - 1, 0);
+    public static bool IsMarked(Creature c) => Marked.TryGetValue(c, out _);
+
+    public static int PoisonFor(int actIndex) => System.Math.Max(actIndex - 1, 1);
 
     [HarmonyPatch(typeof(CreatureCmd), nameof(CreatureCmd.Damage),
         typeof(PlayerChoiceContext), typeof(IEnumerable<Creature>), typeof(decimal), typeof(ValueProp), typeof(Creature), typeof(CardModel))]

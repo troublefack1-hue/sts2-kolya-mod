@@ -16,11 +16,17 @@ using MegaCrit.Sts2.Core.Runs;
 
 namespace KolyaMod;
 
-// Мутации врагов с 4-го акта (docs/mutations.md). Обычные враги и элита: 1 мутация на актах 4–6,
-// 2 на 7–9, 3 на 10-м. Боссы: по одной. Сила каждой мутации — как у родного монстра с этой силой.
+// Мутации врагов с 1-го акта (docs/mutations.md). Обычные враги и элита: 1 мутация на актах 1–6,
+// 2 на 7–9, 3 на 10-м. Боссы мутируют только с 4-го акта, по одной. Сила каждой мутации —
+// как у родного монстра с этой силой. Убитые мутанты на актах 1–3 дают золото (MutationBounty.cs).
 [HarmonyPatch(typeof(Hook), nameof(Hook.BeforeCombatStart))]
 public static class Mutations
 {
+    // кого именно мутировали в этом бою — для награды; заполняется детерминированно,
+    // в совместной игре у всех клиентов одинаково
+    static readonly HashSet<Creature> MutatedEnemies = new();
+    public static bool IsMutated(Creature c) => MutatedEnemies.Contains(c);
+
     static readonly (string Name, Func<Creature, Task> Apply)[] All =
     {
         ("Прочный панцирь", c => Give<HardenedShellPower>(c, 20)),
@@ -39,8 +45,8 @@ public static class Mutations
 
     public static int CountFor(int actIndex, RoomType room)
     {
-        if (actIndex < 3) return 0;
-        if (room == RoomType.Boss) return 1;
+        // боссы мутируют только с 4-го акта; остальные — с 1-го
+        if (room == RoomType.Boss) return actIndex < 3 ? 0 : 1;
         return actIndex < 6 ? 1 : actIndex < 9 ? 2 : 3;
     }
 
@@ -55,6 +61,7 @@ public static class Mutations
         await before;
         int act = runState.CurrentActIndex;
         int count = CountFor(act, combat.Encounter!.RoomType);
+        MutatedEnemies.Clear();
         if (count == 0) return;
         // игровой генератор забега: у всех игроков совместной игры мутации совпадут
         var rng = runState.Rng.Niche;
@@ -63,6 +70,7 @@ public static class Mutations
             foreach (var (name, apply) in All.OrderBy(_ => rng.NextInt()).Take(count))
             {
                 await apply(enemy);
+                MutatedEnemies.Add(enemy);
                 Log.Info($"[kolya_mod] мутация {name} на {enemy.Monster?.Id} (акт {act + 1})");
             }
         }
