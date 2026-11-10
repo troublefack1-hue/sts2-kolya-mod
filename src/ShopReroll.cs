@@ -30,8 +30,9 @@ public static class ShopReroll
 
     static void Postfix(NMerchantInventory __instance, MerchantInventory inventory)
     {
-        // в совместной игре кнопка меняла бы золото и товары мимо синхронизации — пока только одиночная игра
-        if (inventory.Player.RunState.Players.Count > 1) return;
+        // кооператив: ассортимент генерируется из личного генератора игрока (PlayerRng.Shops),
+        // золото списывается той же командой, что при покупке, — состояние магазина
+        // синхронизируется на границах комнат, как при обычной покупке
         int rerolls = 0;
         int Price() => BaseCost() + MerchantCardRemovalEntry.PriceIncrease * rerolls;
 

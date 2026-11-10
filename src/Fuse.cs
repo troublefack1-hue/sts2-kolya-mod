@@ -102,6 +102,7 @@ public static class FuseText
         ["OPTION_KOLYA_FUSE.name"] = "Слияние",
         ["OPTION_KOLYA_FUSE.description"] = "Слить две одинаковые карты в одну: уровни складываются и дают ещё +1 (две «+2» дадут одну «+6» — уровень 7), зачарования объединяются.",
         ["OPTION_KOLYA_FUSE.descriptionDisabled"] = "В колоде нет двух одинаковых карт.",
+        ["OPTION_SMITH.description"] = "Улучшить карту на 2 уровня. (выбор: {Count})",
         ["KOLYA_FUSE_PROMPT_1"] = "Выберите карту для слияния",
         ["KOLYA_FUSE_PROMPT_2"] = "Выберите вторую такую же карту",
         ["KOLYA_MULTI_ENCHANTMENT.title"] = "Несколько зачарований",
