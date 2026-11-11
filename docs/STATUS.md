@@ -1,8 +1,19 @@
-# Kolya Mod (Slay the Spire 2) — статус на 11.11.2026, 15:35
+# Kolya Mod (Slay the Spire 2) — статус на 11.11.2026, 15:45
 
-Версия 0.3.14. Ссылка (всегда последняя): https://github.com/troublefack1-hue/sts2-kolya-mod/releases/latest/download/KolyaMod_StS2.zip
+Версия 0.3.15. Ссылка (всегда последняя): https://github.com/troublefack1-hue/sts2-kolya-mod/releases/latest/download/KolyaMod_StS2.zip
 
-## Изменено в 0.3.14 (11.11) — фикс тёмного экрана в коопе с улучшенными реликвиями
+## Изменено в 0.3.15 (11.11) — фикс «битого сохранения» (на самом деле битой загрузки)
+- Симптом: при продолжении кооп-забега игра сообщала «битое сохранение» и переименовывала
+  current_run_mp.save в .VAL.corrupt.
+- Причина: наш код загрузки уровней реликвий (RelicUpgrade.Load) вызывал relic.Flash() —
+  а Flash трогает UI, которого нет во время валидации сейва в главном меню
+  (RunManager.CanonicalizeSave → Player.LoadInventory → RelicModel.FromSerializable →
+  KolyaMod.RelicUpgrade.Apply → RelicModel.Flash → NullReferenceException). Сейв был цел,
+  падала его загрузка.
+- Фикс: Apply(relic, times, flash) — Flash только в бою (награда за мутантов), при загрузке
+  без Flash. Сейв восстановлен из .corrupt (файлы переименованы обратно).
+
+## Изменено в 0.3.14 (11.11)
 - Симптом: тёмный экран при входе в комнату в совместной игре.
 - Причина: уровень улучшения реликвии пишется в Props строкой «KolyaRelicUpgrade»
   (RelicUpgrade), но имя свойства не было зарегистрировано в SavedPropertiesTypeCache.

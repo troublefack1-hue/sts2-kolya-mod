@@ -32,14 +32,16 @@ public static class RelicUpgrade
 
     static bool Upgradeable(RelicModel relic) => relic.DynamicVars.Count > 0;
 
-    public static void Apply(RelicModel relic, int times)
+    public static void Apply(RelicModel relic, int times, bool flash = true)
     {
         var box = Levels.GetOrCreateValue(relic);
         foreach (var kv in relic.DynamicVars)
             for (int i = 0; i < times; i++)
                 kv.Value.UpgradeValueBy(Amount);
         box.Value += times;
-        relic.Flash();
+        // Flash трогает UI: при загрузке/валидации сейва в главном меню реликвии без сцены —
+        // будет NullReferenceException, поэтому моргаем только в бою (по умолчанию).
+        if (flash) relic.Flash();
     }
 
     [HarmonyPatch(typeof(Hook), nameof(Hook.AfterCombatVictory))]
@@ -87,7 +89,7 @@ public static class RelicUpgrade
         {
             var raw = save.Props?.strings?.FirstOrDefault(s => s.name == SaveKey).value;
             if (string.IsNullOrEmpty(raw) || !int.TryParse(raw, out int level) || level <= 0) return;
-            Apply(__result, level);
+            Apply(__result, level, flash: false); // без Flash: сейвал/валидация идёт без игровой сцены
             Log.Info($"[kolya_mod] реликвия {__result.Id} загружена с уровнем {level}");
         }
     }
