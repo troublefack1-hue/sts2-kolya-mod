@@ -29,23 +29,24 @@ public static class Mutations
     public static bool IsMutated(Creature c) => MutatedEnemies.Contains(c);
 
     // a — индекс акта (0-based); суммы растут с актом
-    // Weight: как часто мутация попадает в выбор. «Прочный панцирь» (кап урона за ход) реже
-    // остальных: он бинарно выключает колоды на больших ударах, а яд/гниение/проклятия его
-    // игнорируют — при высокой частоте единственный «правильный» ответ был бы ДоТ.
-    // «Регенерация» — контр-ответ на ДоТ, держим чуть чаще среднего.
-    static readonly (string Name, int Weight, Func<Creature, int, Task> Apply)[] All =
+    // Система семейств: мутации делятся на 4 семейства, на одного врага — не больше одной
+    // мутации из семейства. Враг с 4 мутациями (10-й акт) гарантированно получает по одной
+    // из каждого семейства — разнообразие и контр-игра вместо стака однотипных капов.
+    enum Fam { Оборона, Контроль, Атака, Заражение }
+
+    static readonly (string Name, Fam Family, Func<Creature, int, Task> Apply)[] All =
     {
-        ("Прочный панцирь", 1, (c, a) => Give<HardenedShellPower>(c, 20)),
-        ("Живучесть",       3, (c, a) => Give<HardToKillPower>(c, 9)),
-        ("Шипы",            3, (c, a) => Give<ThornsPower>(c, 5 + a)),
-        ("Изворотливость",  3, (c, a) => Give<SlipperyPower>(c, 1)),
-        ("Бешенство",       3, (c, a) => Give<EnragePower>(c, 2 + a / 3)),
-        ("Ритуал",          3, (c, a) => Give<RitualPower>(c, 2 + a / 4)),
-        ("Немезис",         3, (c, a) => Give<NemesisPower>(c, 1)),
-        ("Артефакт",        3, (c, a) => Give<ArtifactPower>(c, 1 + a / 6)),
-        ("Отравитель",      2, (c, a) => { Poisoner.Mark(c); return Task.CompletedTask; }),
-        ("Регенерация",     4, (c, a) => Give<RegenPower>(c, 6 + a)),
-        ("Баррикада",       3, (c, a) => Give<BarricadePower>(c, 1)),
+        ("Прочный панцирь", Fam.Оборона,  (c, a) => Give<HardenedShellPower>(c, 20)),
+        ("Живучесть",       Fam.Оборона,  (c, a) => Give<HardToKillPower>(c, 9)),
+        ("Шипы",            Fam.Оборона,  (c, a) => Give<ThornsPower>(c, 5 + a)),
+        ("Баррикада",       Fam.Оборона,  (c, a) => Give<BarricadePower>(c, 1)),
+        ("Изворотливость",  Fam.Контроль, (c, a) => Give<SlipperyPower>(c, 1)),
+        ("Немезис",         Fam.Контроль, (c, a) => Give<NemesisPower>(c, 1)),
+        ("Артефакт",        Fam.Контроль, (c, a) => Give<ArtifactPower>(c, 1 + a / 6)),
+        ("Бешенство",       Fam.Атака,    (c, a) => Give<EnragePower>(c, 2 + a / 3)),
+        ("Ритуал",          Fam.Атака,    (c, a) => Give<RitualPower>(c, 2 + a / 4)),
+        ("Отравитель",      Fam.Заражение,(c, a) => { Poisoner.Mark(c); return Task.CompletedTask; }),
+        ("Регенерация",     Fam.Заражение,(c, a) => Give<RegenPower>(c, 6 + a)),
     };
 
     static Task Give<T>(Creature c, decimal amount) where T : PowerModel =>
@@ -76,19 +77,19 @@ public static class Mutations
         var rng = runState.Rng.Niche;
         foreach (var enemy in combat.Enemies.ToList())
         {
-            // взвешенный выбор без возврата
+            // случайный выбор без возврата: одно семейство — одна мутация на врага
             var pool = All.ToList();
+            var taken = new HashSet<Fam>();
             for (int i = 0; i < count && pool.Count > 0; i++)
             {
-                int total = pool.Sum(p => p.Weight);
-                int roll = rng.NextInt(total);
-                int idx = 0;
-                while (roll >= pool[idx].Weight) { roll -= pool[idx].Weight; idx++; }
-                var (name, _, apply) = pool[idx];
-                pool.RemoveAt(idx);
-                await apply(enemy, act);
+                var avail = pool.Where(p => !taken.Contains(p.Family)).ToList();
+                if (avail.Count == 0) avail = pool;
+                var pick = avail[rng.NextInt(avail.Count)];
+                pool.Remove(pick);
+                taken.Add(pick.Family);
+                await pick.Apply(enemy, act);
                 MutatedEnemies.Add(enemy);
-                Log.Info($"[kolya_mod] мутация {name} на {enemy.Monster?.Id} (акт {act + 1})");
+                Log.Info($"[kolya_mod] мутация {pick.Name} на {enemy.Monster?.Id} (акт {act + 1})");
             }
         }
     }

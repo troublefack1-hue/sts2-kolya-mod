@@ -13,9 +13,9 @@ AssemblyLoadContext.Default.Resolving += (ctx, name) =>
 var asm = Assembly.LoadFrom(Path.Combine(gameDir, "sts2.dll"));
 
 // HardenedShellPower: что делает (урон за удар <= Amount?)
-var t = asm.GetTypes().First(x => x.Name == "HardenedShellPower");
+var t = asm.GetTypes().First(x => x.Name == "PowerCmd");
 Console.WriteLine($"=== {t.Name} ===");
-foreach (var m in t.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.DeclaredOnly))
+foreach (var m in t.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static | BindingFlags.DeclaredOnly))
 {
     if (m.IsSpecialName) continue;
     Console.WriteLine($"  {(m.IsPublic ? "+" : "-")} {(m.IsVirtual ? "virt " : "")}{m.ReturnType.Name} {m.Name}({string.Join(",", m.GetParameters().Select(p => p.ParameterType.Name + " " + p.Name))})");
