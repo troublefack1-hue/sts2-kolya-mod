@@ -26,6 +26,7 @@ public static class Mutations
     // кого именно мутировали в этом бою — для награды; заполняется детерминированно,
     // в совместной игре у всех клиентов одинаково
     static readonly HashSet<Creature> MutatedEnemies = new();
+    static ICombatState? _combat;
     public static bool IsMutated(Creature c) => MutatedEnemies.Contains(c);
 
     // a — индекс акта (0-based); суммы растут с актом
@@ -71,12 +72,20 @@ public static class Mutations
         await before;
         int act = runState.CurrentActIndex;
         int count = CountFor(act, combat.Encounter!.RoomType);
-        MutatedEnemies.Clear();
+        // хук BeforeCombatStart вызывается по разу на каждого игрока в коопе — чистим список
+        // только при смене боя, а уже мутированных врагов пропускаем (иначе мутации
+        // накладывались бы по кругу, по 2×/3× в зависимости от числа игроков)
+        if (!ReferenceEquals(_combat, combat))
+        {
+            _combat = combat;
+            MutatedEnemies.Clear();
+        }
         if (count == 0) return;
         // игровой генератор забега: у всех игроков совместной игры мутации совпадут
         var rng = runState.Rng.Niche;
         foreach (var enemy in combat.Enemies.ToList())
         {
+            if (MutatedEnemies.Contains(enemy)) continue;
             // случайный выбор без возврата: одно семейство — одна мутация на врага
             var pool = All.ToList();
             var taken = new HashSet<Fam>();

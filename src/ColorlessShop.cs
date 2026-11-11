@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using HarmonyLib;
@@ -37,10 +38,22 @@ public static class ColorlessShop
         foreach (var (minAct, rarity) in ExtraSlots)
         {
             if (act < minAct) continue;
-            var entry = new MerchantCardEntry(player, __instance, pool, rarity);
-            entry.Populate();
-            entries.Add(entry);
-            Log.Info($"[kolya_mod] магазин: нейтральный слот «{rarity}» (акт {act + 1})");
+            try
+            {
+                // в пуле может не оказаться карт этой редкости (или ванильные слоты их уже
+                // забрали — Populate исключает дубликаты через Except, и на пустом остатке
+                // NextItem возвращает null → CreateCard(null) падает с NRE, комната не грузится)
+                if (!pool.Any(c => c.Rarity == rarity)) continue;
+                var entry = new MerchantCardEntry(player, __instance, pool, rarity);
+                entry.Populate();
+                entries.Add(entry);
+                Log.Info($"[kolya_mod] магазин: нейтральный слот «{rarity}» (акт {act + 1})");
+            }
+            catch (Exception ex)
+            {
+                // один плохой слот не должен ронять вход в комнату (тёмный экран)
+                Log.Error($"[kolya_mod] нейтральный слот «{rarity}» пропущен: {ex.Message}");
+            }
         }
     }
 }

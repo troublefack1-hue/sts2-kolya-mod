@@ -64,10 +64,10 @@ public static class FifthUpgradeEnchant
 
 // Страховка для сохранений до фикса: карта без вражеской цели с зачарованием Inky
 // падает с NullReferenceException при розыгрыше (Inky вешает Слабость на Target == null).
-// Проглатываем только этот случай — карта отыгрывается, Слабость просто не накладывается.
+// ВАЖНО: финализатором это не поймать — NRE всплывает внутри async-цепочки OnPlay,
+// постфикс/финализатор его не видят. Поэтому префикс: нет цели — не вызываем OnPlay вообще.
 [HarmonyPatch(typeof(Inky), nameof(Inky.OnPlay))]
 public static class InkyTargetGuard
 {
-    static Exception? Finalizer(Exception? __exception) =>
-        __exception is NullReferenceException ? null : __exception;
+    static bool Prefix(CardPlay cardPlay) => cardPlay.Target != null;
 }
