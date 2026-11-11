@@ -12,8 +12,30 @@ AssemblyLoadContext.Default.Resolving += (ctx, name) =>
 };
 var asm = Assembly.LoadFrom(Path.Combine(gameDir, "sts2.dll"));
 
-var tt = asm.GetTypes().First(t => t.Name == "TargetType");
-Console.WriteLine($"TargetType: {string.Join(", ", Enum.GetNames(tt))}");
-var cm = asm.GetTypes().First(t => t.Name == "CardModel");
-var p = cm.GetProperty("TargetType", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
-Console.WriteLine($"CardModel.TargetType: {(p == null ? "нет" : $"{(p.GetMethod?.IsPublic == true ? "+" : "-")} {p.PropertyType.Name}")}");
+// HardenedShellPower: что делает (урон за удар <= Amount?)
+var t = asm.GetTypes().First(x => x.Name == "HardenedShellPower");
+Console.WriteLine($"=== {t.Name} ===");
+foreach (var m in t.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.DeclaredOnly))
+{
+    if (m.IsSpecialName) continue;
+    Console.WriteLine($"  {(m.IsPublic ? "+" : "-")} {(m.IsVirtual ? "virt " : "")}{m.ReturnType.Name} {m.Name}({string.Join(",", m.GetParameters().Select(p => p.ParameterType.Name + " " + p.Name))})");
+    var sm = m;
+    if (m.ReturnType.Name.Contains("Task"))
+    {
+        var nested = t.GetNestedTypes(BindingFlags.NonPublic).FirstOrDefault(x => x.Name.Contains(m.Name));
+        if (nested != null) sm = nested.GetMethod("MoveNext", BindingFlags.NonPublic | BindingFlags.Instance)!;
+    }
+    var body = sm.GetMethodBody();
+    if (body == null) continue;
+    var il = body.GetILAsByteArray()!;
+    for (int pos = 0; pos + 5 <= il.Length; pos++)
+        if (il[pos] == 0x28 || il[pos] == 0x6f)
+        {
+            try {
+                var tgt = sm.Module.ResolveMethod(BitConverter.ToInt32(il, pos + 1));
+                var s = tgt?.ToString()?.Replace("MegaCrit.Sts2.Core.", "M.").Replace("System.Threading.Tasks.", "").Replace("System.Collections.Generic.", "");
+                if (s != null && !s.Contains("AsyncTaskMethodBuilder") && !s.Contains("TaskAwaiter") && !s.Contains("RuntimeHelpers"))
+                    Console.WriteLine($"      -> {s}");
+            } catch {}
+        }
+}

@@ -29,19 +29,23 @@ public static class Mutations
     public static bool IsMutated(Creature c) => MutatedEnemies.Contains(c);
 
     // a — индекс акта (0-based); суммы растут с актом
-    static readonly (string Name, Func<Creature, int, Task> Apply)[] All =
+    // Weight: как часто мутация попадает в выбор. «Прочный панцирь» (кап урона за ход) реже
+    // остальных: он бинарно выключает колоды на больших ударах, а яд/гниение/проклятия его
+    // игнорируют — при высокой частоте единственный «правильный» ответ был бы ДоТ.
+    // «Регенерация» — контр-ответ на ДоТ, держим чуть чаще среднего.
+    static readonly (string Name, int Weight, Func<Creature, int, Task> Apply)[] All =
     {
-        ("Прочный панцирь", (c, a) => Give<HardenedShellPower>(c, 20)),
-        ("Живучесть",       (c, a) => Give<HardToKillPower>(c, 9)),
-        ("Шипы",            (c, a) => Give<ThornsPower>(c, 5 + a)),
-        ("Изворотливость",  (c, a) => Give<SlipperyPower>(c, 1)),
-        ("Бешенство",       (c, a) => Give<EnragePower>(c, 2 + a / 3)),
-        ("Ритуал",          (c, a) => Give<RitualPower>(c, 2 + a / 4)),
-        ("Немезис",         (c, a) => Give<NemesisPower>(c, 1)),
-        ("Артефакт",        (c, a) => Give<ArtifactPower>(c, 1 + a / 6)),
-        ("Отравитель",      (c, a) => { Poisoner.Mark(c); return Task.CompletedTask; }),
-        ("Регенерация",     (c, a) => Give<RegenPower>(c, 6 + a)),
-        ("Баррикада",       (c, a) => Give<BarricadePower>(c, 1)),
+        ("Прочный панцирь", 1, (c, a) => Give<HardenedShellPower>(c, 20)),
+        ("Живучесть",       3, (c, a) => Give<HardToKillPower>(c, 9)),
+        ("Шипы",            3, (c, a) => Give<ThornsPower>(c, 5 + a)),
+        ("Изворотливость",  3, (c, a) => Give<SlipperyPower>(c, 1)),
+        ("Бешенство",       3, (c, a) => Give<EnragePower>(c, 2 + a / 3)),
+        ("Ритуал",          3, (c, a) => Give<RitualPower>(c, 2 + a / 4)),
+        ("Немезис",         3, (c, a) => Give<NemesisPower>(c, 1)),
+        ("Артефакт",        3, (c, a) => Give<ArtifactPower>(c, 1 + a / 6)),
+        ("Отравитель",      2, (c, a) => { Poisoner.Mark(c); return Task.CompletedTask; }),
+        ("Регенерация",     4, (c, a) => Give<RegenPower>(c, 6 + a)),
+        ("Баррикада",       3, (c, a) => Give<BarricadePower>(c, 1)),
     };
 
     static Task Give<T>(Creature c, decimal amount) where T : PowerModel =>
@@ -72,8 +76,16 @@ public static class Mutations
         var rng = runState.Rng.Niche;
         foreach (var enemy in combat.Enemies.ToList())
         {
-            foreach (var (name, apply) in All.OrderBy(_ => rng.NextInt()).Take(count))
+            // взвешенный выбор без возврата
+            var pool = All.ToList();
+            for (int i = 0; i < count && pool.Count > 0; i++)
             {
+                int total = pool.Sum(p => p.Weight);
+                int roll = rng.NextInt(total);
+                int idx = 0;
+                while (roll >= pool[idx].Weight) { roll -= pool[idx].Weight; idx++; }
+                var (name, _, apply) = pool[idx];
+                pool.RemoveAt(idx);
                 await apply(enemy, act);
                 MutatedEnemies.Add(enemy);
                 Log.Info($"[kolya_mod] мутация {name} на {enemy.Monster?.Id} (акт {act + 1})");
