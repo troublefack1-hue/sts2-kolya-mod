@@ -1,6 +1,15 @@
-# Kolya Mod (Slay the Spire 2) — статус на 11.11.2026, 13:35
+# Kolya Mod (Slay the Spire 2) — статус на 11.11.2026, 13:55
 
-Версия 0.3.11. Ссылка (всегда последняя): https://github.com/troublefack1-hue/sts2-kolya-mod/releases/latest/download/KolyaMod_StS2.zip
+Версия 0.3.12. Ссылка (всегда последняя): https://github.com/troublefack1-hue/sts2-kolya-mod/releases/latest/download/KolyaMod_StS2.zip
+
+## Изменено в 0.3.12 (11.11)
+- Нейтральные (бесцветные) карты в магазине — больше слотов. Ваниль продаёт 2
+  (необычная + редная, MerchantInventory._colorlessCardRarities). Добавлено: обычная
+  нейтральная всегда, вторая редкая с 4-го акта, вторая необычная с 7-го.
+- Слоты создаются ванильным конструктором MerchantCardEntry(player, inventory, pool,
+  rarity) после PopulateColorlessCardEntries — цены, покупка, перекат после покупки
+  работают как у обычных нейтральных карт. Нейтральную карту может играть любой
+  персонаж — удобно для обмена между игроками.
 
 ## Изменено в 0.3.11 (11.11)
 - «Обмен картами» у костра (только совместная игра): каждый игрок выбирает карту из
