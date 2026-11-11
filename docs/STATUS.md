@@ -1,8 +1,18 @@
-# Kolya Mod (Slay the Spire 2) — статус на 11.11.2026, 15:15
+# Kolya Mod (Slay the Spire 2) — статус на 11.11.2026, 15:35
 
-Версия 0.3.13. Ссылка (всегда последняя): https://github.com/troublefack1-hue/sts2-kolya-mod/releases/latest/download/KolyaMod_StS2.zip
+Версия 0.3.14. Ссылка (всегда последняя): https://github.com/troublefack1-hue/sts2-kolya-mod/releases/latest/download/KolyaMod_StS2.zip
 
-## Изменено в 0.3.13 (11.11) — фикс «Превращения» с зачарованием Inky
+## Изменено в 0.3.14 (11.11) — фикс тёмного экрана в коопе с улучшенными реликвиями
+- Симптом: тёмный экран при входе в комнату в совместной игре.
+- Причина: уровень улучшения реликвии пишется в Props строкой «KolyaRelicUpgrade»
+  (RelicUpgrade), но имя свойства не было зарегистрировано в SavedPropertiesTypeCache.
+  Ваниль передаёт Props по сети номерами из общего словаря: GetNetIdForPropertyName
+  бросал ArgumentException при синхронизации игрока (SyncPlayerDataMessage →
+  SerializableRelic.Serialize) — CombatStateSynchronizer.StartSync умирал, комната
+  не создавалась. KolyaExtraEnchantments был зарегистрирован в NetSafety с 0.3.5,
+  KolyaRelicUpgrade (0.3.9) — упустили.
+
+## Изменено в 0.3.13 (11.11)
 - Карта «Превращение» (CARD.TRANSFIGURE) без цели падала с NullReferenceException при
   розыгрыше, если на ней было зачарование Inky: Inky вешает Слабость на цель карты,
   а у бесцелевой карты Target == null (зонд IL: Inky.OnPlay читает cardPlay.Target).
