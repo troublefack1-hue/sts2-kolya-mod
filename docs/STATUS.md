@@ -1,6 +1,17 @@
-# Kolya Mod (Slay the Spire 2) — статус на 11.11.2026, 13:55
+# Kolya Mod (Slay the Spire 2) — статус на 11.11.2026, 15:15
 
-Версия 0.3.12. Ссылка (всегда последняя): https://github.com/troublefack1-hue/sts2-kolya-mod/releases/latest/download/KolyaMod_StS2.zip
+Версия 0.3.13. Ссылка (всегда последняя): https://github.com/troublefack1-hue/sts2-kolya-mod/releases/latest/download/KolyaMod_StS2.zip
+
+## Изменено в 0.3.13 (11.11) — фикс «Превращения» с зачарованием Inky
+- Карта «Превращение» (CARD.TRANSFIGURE) без цели падала с NullReferenceException при
+  розыгрыше, если на ней было зачарование Inky: Inky вешает Слабость на цель карты,
+  а у бесцелевой карты Target == null (зонд IL: Inky.OnPlay читает cardPlay.Target).
+  Из-за падения обрывался весь розыгрыш — отсюда «не даёт повторы для другой карты».
+- Фильтр пула 5-го улучшения: Inky не выдаётся картам без вражеской цели
+  (TargetType не AnyEnemy/AllEnemies/RandomEnemy). Остальные зачарования пула
+  проверили зондом — завязаны на IsPoweredAttack или без таргета, безопасны.
+- Страховка для старых сейвов: InkyTargetGuard проглатывает NRE в Inky.OnPlay —
+  карта отыгрывается, Слабость просто не накладывается.
 
 ## Изменено в 0.3.12 (11.11)
 - Нейтральные (бесцветные) карты в магазине — больше слотов. Ваниль продаёт 2

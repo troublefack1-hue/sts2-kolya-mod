@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using HarmonyLib;
 using MegaCrit.Sts2.Core.Commands;
+using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Logging;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Models.Enchantments;
@@ -38,8 +39,14 @@ public static class FifthUpgradeEnchant
     public static List<EnchantmentModel> Options(CardModel card)
     {
         var have = MultiEnchant.All(card).Select(e => e.GetType()).ToHashSet();
+        // Inky вешает Слабость на цель карты — картам без вражеской цели она не подходит:
+        // при розыгрыше такой карты Target == null и игра падает с NullReferenceException
+        // (поймано на «Превращении»). Остальные зачарования пула либо без таргета, либо
+        // проверяют IsPoweredAttack сами.
+        bool canHitEnemy = card.TargetType is TargetType.AnyEnemy or TargetType.AllEnemies or TargetType.RandomEnemy;
         return ModelDb.DebugEnchantments
             .Where(e => Pool.Contains(e.GetType()) && !have.Contains(e.GetType()) && e.CanEnchant(card))
+            .Where(e => e is Inky ? canHitEnemy : true)
             .OrderBy(e => e.Id.Entry, StringComparer.Ordinal).ToList();
     }
 
@@ -53,4 +60,14 @@ public static class FifthUpgradeEnchant
         CardCmd.Enchant(pick.ToMutable(), card, 1m);
         return pick;
     }
+}
+
+// Страховка для сохранений до фикса: карта без вражеской цели с зачарованием Inky
+// падает с NullReferenceException при розыгрыше (Inky вешает Слабость на Target == null).
+// Проглатываем только этот случай — карта отыгрывается, Слабость просто не накладывается.
+[HarmonyPatch(typeof(Inky), nameof(Inky.OnPlay))]
+public static class InkyTargetGuard
+{
+    static Exception? Finalizer(Exception? __exception) =>
+        __exception is NullReferenceException ? null : __exception;
 }
