@@ -1,0 +1,356 @@
+0000: ldc.i4.s 
+0002: newarr typeof CardModel
+0007: dup 
+0008: ldc.i4.0 
+0009: call ModelDb.Card
+000E: stelem.ref 
+000F: dup 
+0010: ldc.i4.1 
+0011: call ModelDb.Card
+0016: stelem.ref 
+0017: dup 
+0018: ldc.i4.2 
+0019: call ModelDb.Card
+001E: stelem.ref 
+001F: dup 
+0020: ldc.i4.3 
+0021: call ModelDb.Card
+0026: stelem.ref 
+0027: dup 
+0028: ldc.i4.4 
+0029: call ModelDb.Card
+002E: stelem.ref 
+002F: dup 
+0030: ldc.i4.5 
+0031: call ModelDb.Card
+0036: stelem.ref 
+0037: dup 
+0038: ldc.i4.6 
+0039: call ModelDb.Card
+003E: stelem.ref 
+003F: dup 
+0040: ldc.i4.7 
+0041: call ModelDb.Card
+0046: stelem.ref 
+0047: dup 
+0048: ldc.i4.8 
+0049: call ModelDb.Card
+004E: stelem.ref 
+004F: dup 
+0050: ldc.i4.s 
+0052: call ModelDb.Card
+0057: stelem.ref 
+0058: dup 
+0059: ldc.i4.s 
+005B: call ModelDb.Card
+0060: stelem.ref 
+0061: dup 
+0062: ldc.i4.s 
+0064: call ModelDb.Card
+0069: stelem.ref 
+006A: dup 
+006B: ldc.i4.s 
+006D: call ModelDb.Card
+0072: stelem.ref 
+0073: dup 
+0074: ldc.i4.s 
+0076: call ModelDb.Card
+007B: stelem.ref 
+007C: dup 
+007D: ldc.i4.s 
+007F: call ModelDb.Card
+0084: stelem.ref 
+0085: dup 
+0086: ldc.i4.s 
+0088: call ModelDb.Card
+008D: stelem.ref 
+008E: dup 
+008F: ldc.i4.s 
+0091: call ModelDb.Card
+0096: stelem.ref 
+0097: dup 
+0098: ldc.i4.s 
+009A: call ModelDb.Card
+009F: stelem.ref 
+00A0: dup 
+00A1: ldc.i4.s 
+00A3: call ModelDb.Card
+00A8: stelem.ref 
+00A9: dup 
+00AA: ldc.i4.s 
+00AC: call ModelDb.Card
+00B1: stelem.ref 
+00B2: dup 
+00B3: ldc.i4.s 
+00B5: call ModelDb.Card
+00BA: stelem.ref 
+00BB: dup 
+00BC: ldc.i4.s 
+00BE: call ModelDb.Card
+00C3: stelem.ref 
+00C4: dup 
+00C5: ldc.i4.s 
+00C7: call ModelDb.Card
+00CC: stelem.ref 
+00CD: dup 
+00CE: ldc.i4.s 
+00D0: call ModelDb.Card
+00D5: stelem.ref 
+00D6: dup 
+00D7: ldc.i4.s 
+00D9: call ModelDb.Card
+00DE: stelem.ref 
+00DF: dup 
+00E0: ldc.i4.s 
+00E2: call ModelDb.Card
+00E7: stelem.ref 
+00E8: dup 
+00E9: ldc.i4.s 
+00EB: call ModelDb.Card
+00F0: stelem.ref 
+00F1: dup 
+00F2: ldc.i4.s 
+00F4: call ModelDb.Card
+00F9: stelem.ref 
+00FA: dup 
+00FB: ldc.i4.s 
+00FD: call ModelDb.Card
+0102: stelem.ref 
+0103: dup 
+0104: ldc.i4.s 
+0106: call ModelDb.Card
+010B: stelem.ref 
+010C: dup 
+010D: ldc.i4.s 
+010F: call ModelDb.Card
+0114: stelem.ref 
+0115: dup 
+0116: ldc.i4.s 
+0118: call ModelDb.Card
+011D: stelem.ref 
+011E: dup 
+011F: ldc.i4.s 
+0121: call ModelDb.Card
+0126: stelem.ref 
+0127: dup 
+0128: ldc.i4.s 
+012A: call ModelDb.Card
+012F: stelem.ref 
+0130: dup 
+0131: ldc.i4.s 
+0133: call ModelDb.Card
+0138: stelem.ref 
+0139: dup 
+013A: ldc.i4.s 
+013C: call ModelDb.Card
+0141: stelem.ref 
+0142: dup 
+0143: ldc.i4.s 
+0145: call ModelDb.Card
+014A: stelem.ref 
+014B: dup 
+014C: ldc.i4.s 
+014E: call ModelDb.Card
+0153: stelem.ref 
+0154: dup 
+0155: ldc.i4.s 
+0157: call ModelDb.Card
+015C: stelem.ref 
+015D: dup 
+015E: ldc.i4.s 
+0160: call ModelDb.Card
+0165: stelem.ref 
+0166: dup 
+0167: ldc.i4.s 
+0169: call ModelDb.Card
+016E: stelem.ref 
+016F: dup 
+0170: ldc.i4.s 
+0172: call ModelDb.Card
+0177: stelem.ref 
+0178: dup 
+0179: ldc.i4.s 
+017B: call ModelDb.Card
+0180: stelem.ref 
+0181: dup 
+0182: ldc.i4.s 
+0184: call ModelDb.Card
+0189: stelem.ref 
+018A: dup 
+018B: ldc.i4.s 
+018D: call ModelDb.Card
+0192: stelem.ref 
+0193: dup 
+0194: ldc.i4.s 
+0196: call ModelDb.Card
+019B: stelem.ref 
+019C: dup 
+019D: ldc.i4.s 
+019F: call ModelDb.Card
+01A4: stelem.ref 
+01A5: dup 
+01A6: ldc.i4.s 
+01A8: call ModelDb.Card
+01AD: stelem.ref 
+01AE: dup 
+01AF: ldc.i4.s 
+01B1: call ModelDb.Card
+01B6: stelem.ref 
+01B7: dup 
+01B8: ldc.i4.s 
+01BA: call ModelDb.Card
+01BF: stelem.ref 
+01C0: dup 
+01C1: ldc.i4.s 
+01C3: call ModelDb.Card
+01C8: stelem.ref 
+01C9: dup 
+01CA: ldc.i4.s 
+01CC: call ModelDb.Card
+01D1: stelem.ref 
+01D2: dup 
+01D3: ldc.i4.s 
+01D5: call ModelDb.Card
+01DA: stelem.ref 
+01DB: dup 
+01DC: ldc.i4.s 
+01DE: call ModelDb.Card
+01E3: stelem.ref 
+01E4: dup 
+01E5: ldc.i4.s 
+01E7: call ModelDb.Card
+01EC: stelem.ref 
+01ED: dup 
+01EE: ldc.i4.s 
+01F0: call ModelDb.Card
+01F5: stelem.ref 
+01F6: dup 
+01F7: ldc.i4.s 
+01F9: call ModelDb.Card
+01FE: stelem.ref 
+01FF: dup 
+0200: ldc.i4.s 
+0202: call ModelDb.Card
+0207: stelem.ref 
+0208: dup 
+0209: ldc.i4.s 
+020B: call ModelDb.Card
+0210: stelem.ref 
+0211: dup 
+0212: ldc.i4.s 
+0214: call ModelDb.Card
+0219: stelem.ref 
+021A: dup 
+021B: ldc.i4.s 
+021D: call ModelDb.Card
+0222: stelem.ref 
+0223: dup 
+0224: ldc.i4.s 
+0226: call ModelDb.Card
+022B: stelem.ref 
+022C: dup 
+022D: ldc.i4.s 
+022F: call ModelDb.Card
+0234: stelem.ref 
+0235: dup 
+0236: ldc.i4.s 
+0238: call ModelDb.Card
+023D: stelem.ref 
+023E: dup 
+023F: ldc.i4.s 
+0241: call ModelDb.Card
+0246: stelem.ref 
+0247: dup 
+0248: ldc.i4.s 
+024A: call ModelDb.Card
+024F: stelem.ref 
+0250: dup 
+0251: ldc.i4.s 
+0253: call ModelDb.Card
+0258: stelem.ref 
+0259: dup 
+025A: ldc.i4.s 
+025C: call ModelDb.Card
+0261: stelem.ref 
+0262: dup 
+0263: ldc.i4.s 
+0265: call ModelDb.Card
+026A: stelem.ref 
+026B: dup 
+026C: ldc.i4.s 
+026E: call ModelDb.Card
+0273: stelem.ref 
+0274: dup 
+0275: ldc.i4.s 
+0277: call ModelDb.Card
+027C: stelem.ref 
+027D: dup 
+027E: ldc.i4.s 
+0280: call ModelDb.Card
+0285: stelem.ref 
+0286: dup 
+0287: ldc.i4.s 
+0289: call ModelDb.Card
+028E: stelem.ref 
+028F: dup 
+0290: ldc.i4.s 
+0292: call ModelDb.Card
+0297: stelem.ref 
+0298: dup 
+0299: ldc.i4.s 
+029B: call ModelDb.Card
+02A0: stelem.ref 
+02A1: dup 
+02A2: ldc.i4.s 
+02A4: call ModelDb.Card
+02A9: stelem.ref 
+02AA: dup 
+02AB: ldc.i4.s 
+02AD: call ModelDb.Card
+02B2: stelem.ref 
+02B3: dup 
+02B4: ldc.i4.s 
+02B6: call ModelDb.Card
+02BB: stelem.ref 
+02BC: dup 
+02BD: ldc.i4.s 
+02BF: call ModelDb.Card
+02C4: stelem.ref 
+02C5: dup 
+02C6: ldc.i4.s 
+02C8: call ModelDb.Card
+02CD: stelem.ref 
+02CE: dup 
+02CF: ldc.i4.s 
+02D1: call ModelDb.Card
+02D6: stelem.ref 
+02D7: dup 
+02D8: ldc.i4.s 
+02DA: call ModelDb.Card
+02DF: stelem.ref 
+02E0: dup 
+02E1: ldc.i4.s 
+02E3: call ModelDb.Card
+02E8: stelem.ref 
+02E9: dup 
+02EA: ldc.i4.s 
+02EC: call ModelDb.Card
+02F1: stelem.ref 
+02F2: dup 
+02F3: ldc.i4.s 
+02F5: call ModelDb.Card
+02FA: stelem.ref 
+02FB: dup 
+02FC: ldc.i4.s 
+02FE: call ModelDb.Card
+0303: stelem.ref 
+0304: dup 
+0305: ldc.i4.s 
+0307: call ModelDb.Card
+030C: stelem.ref 
+030D: dup 
+030E: ldc.i4.s 
+0310: call ModelDb.Card
+Unhandled exception. System.ArgumentException: The array starting from the specified index is not long enough to read a value of the specified type. (Parameter 'value')
+   at System.BitConverter.ToInt32(Byte[] value, Int32 startIndex)
+   at Program.<Main>$(String[] args) in D:\Claude\sts2_mod\tools\probe\Program.cs:line 41

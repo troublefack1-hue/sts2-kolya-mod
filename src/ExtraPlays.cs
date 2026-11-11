@@ -5,13 +5,14 @@ using MegaCrit.Sts2.Core.Models;
 namespace KolyaMod;
 
 // Карты, у которых повторное улучшение ничего не меняет (docs/card_upgrades.md), получают за лишние уровни
-// дополнительные применения: +1 повтор за уровень. Карты со словом-свойством — со 2-го уровня,
-// карты с удешевлением — после того, как цена дошла до 0. Игра сама пишет «Повтор N» на карте и в подсказке.
+// бонус: карты со словом-свойством — дополнительные применения со 2-го уровня, карты с удешевлением —
+// после того, как цена дошла до 0, прочие — +2 к первому числовому стату (StatUpgrade), а если чисел нет —
+// дополнительное применение за уровень. Игра сама пишет «Повтор N» на карте и в подсказке.
 [HarmonyPatch(typeof(CardModel), nameof(CardModel.GetEnchantedReplayCount))]
 public static class ExtraPlays
 {
     // улучшение — слово-свойство: повторы со 2-го уровня
-    static readonly HashSet<string> Keyword = new()
+    internal static readonly HashSet<string> Keyword = new()
     {
         "Afterimage", "Aggression", "Anointed", "Apparition", "Arsenal", "BeaconOfHope",
         "BigBang", "CalculatedGamble", "CallOfTheVoid", "Chill", "DemonicShield", "Discovery",
@@ -24,7 +25,7 @@ public static class ExtraPlays
     };
 
     // улучшение — удешевление: сколько уровней уходит на то, чтобы цена дошла до 0
-    static readonly Dictionary<string, int> CostLevels = new()
+    internal static readonly Dictionary<string, int> CostLevels = new()
     {
         ["Alchemize"] = 1, ["Apotheosis"] = 2, ["Automation"] = 1, ["BansheesCry"] = 5, ["Barricade"] = 3,
         ["BodySlam"] = 1, ["BulletTime"] = 3, ["Calamity"] = 3, ["Corruption"] = 3, ["CreativeAi"] = 3,
@@ -45,7 +46,10 @@ public static class ExtraPlays
         var name = card.GetType().Name;
         if (Keyword.Contains(name)) return System.Math.Max(card.CurrentUpgradeLevel - 1, 0);
         if (CostLevels.TryGetValue(name, out var toZero)) return System.Math.Max(card.CurrentUpgradeLevel - toZero, 0);
-        return 0;
+        // прочие карты: с числовыми статами рост идёт через StatUpgrade (+2 к стату за уровень);
+        // без статов — повтор за каждый уровень после первого, чтобы улучшение было видно всегда
+        if (StatUpgrade.HasStatVar(card)) return 0;
+        return System.Math.Max(card.CurrentUpgradeLevel - 1, 0);
     }
 
     static void Postfix(CardModel __instance, ref int __result) => __result += Bonus(__instance);
