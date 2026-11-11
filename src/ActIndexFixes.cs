@@ -42,9 +42,11 @@ public static class RestSiteAnimActClamp
         if (bad >= 0 && stlocAnim != null && stlocAnim.opcode.Name!.StartsWith("stloc"))
         {
             // ldstr "Unexpected act"; newobj InvalidOperationException..ctor; throw
-            //   -> ldstr "glory_loop"; stloc animName (падение на конец switch'а)
-            codes[bad] = new CodeInstruction(OpCodes.Ldstr, "glory_loop");
-            codes[bad + 1] = stlocAnim.Clone();
+            //   -> ldstr "glory_loop"; stloc animName (падение на конец switch'а).
+            // ВАЖНО: не клонируем инструкцию — ярлыки (метки переходов) нельзя дублировать,
+            // иначе Harmony падает с «Bad label content in ILGenerator».
+            codes[bad] = new CodeInstruction(OpCodes.Ldstr, "glory_loop") { labels = codes[bad].labels };
+            codes[bad + 1] = new CodeInstruction(stlocAnim.opcode, stlocAnim.operand);
             codes.RemoveAt(bad + 2); // throw
         }
         return codes;

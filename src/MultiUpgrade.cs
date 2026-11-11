@@ -1,3 +1,4 @@
+using System.Reflection;
 using HarmonyLib;
 using MegaCrit.Sts2.Core.Models;
 
@@ -13,5 +14,21 @@ public static class MultiUpgrade
     static void Postfix(ref int __result)
     {
         if (__result == 1) __result = Limit;
+    }
+}
+
+// Ванильный сеттер бросает исключение, если уровень выше MaxUpgradeLevel. С модом карты с
+// уровнем выше ванильного максимума легальны, а старые сейвы могут содержать их с прошлых
+// версий — пишем значение в поле напрямую, без проверки (загрузка не должна умирать).
+[HarmonyPatch(typeof(CardModel), "set_CurrentUpgradeLevel")]
+public static class TolerantUpgradeLevelSetter
+{
+    static readonly FieldInfo Field = AccessTools.Field(typeof(CardModel), "_currentUpgradeLevel");
+
+    static bool Prefix(CardModel __instance, int value)
+    {
+        __instance.AssertMutable();
+        Field.SetValue(__instance, value);
+        return false;
     }
 }
