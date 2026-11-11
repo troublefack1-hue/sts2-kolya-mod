@@ -12,12 +12,9 @@ AssemblyLoadContext.Default.Resolving += (ctx, name) =>
 };
 var asm = Assembly.LoadFrom(Path.Combine(gameDir, "sts2.dll"));
 
-// публичность типов статов
-foreach (var n in new[] { "DynamicVar", "DamageVar", "BlockVar", "PowerVar`1", "HealVar", "MaxHpVar", "HpLossVar", "GoldVar", "DynamicVarSet" })
+var pm = asm.GetTypes().First(t => t.Name == "PowerModel");
+foreach (var t in asm.GetTypes().Where(t => t.IsSubclassOf(pm) && t.IsPublic).OrderBy(t => t.Name))
 {
-    var t = asm.GetTypes().FirstOrDefault(x => x.Name == n);
-    if (t != null)
-        Console.WriteLine($"{n}: public={t.IsPublic} ns={t.Namespace} generic={(t.IsGenericTypeDefinition ? "def" : (t.IsGenericType ? t.GetGenericTypeDefinition().Name : "no"))}");
-    else
-        Console.WriteLine($"{n}: НЕ НАЙДЕН");
+    // только силы монстров (не игрока): эвристика — у всех печатаем, пользователь выберет
+    Console.WriteLine(t.Name);
 }
