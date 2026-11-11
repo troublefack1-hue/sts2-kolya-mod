@@ -12,9 +12,14 @@ AssemblyLoadContext.Default.Resolving += (ctx, name) =>
 };
 var asm = Assembly.LoadFrom(Path.Combine(gameDir, "sts2.dll"));
 
-var pm = asm.GetTypes().First(t => t.Name == "PowerModel");
-foreach (var t in asm.GetTypes().Where(t => t.IsSubclassOf(pm) && t.IsPublic).OrderBy(t => t.Name))
-{
-    // только силы монстров (не игрока): эвристика — у всех печатаем, пользователь выберет
-    Console.WriteLine(t.Name);
-}
+var ec = asm.GetTypes().First(t => t.Name == "CardEnergyCost");
+Console.WriteLine($"=== CardEnergyCost : {ec.BaseType?.Name} ===");
+foreach (var p in ec.GetProperties(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static | BindingFlags.DeclaredOnly))
+    Console.WriteLine($"prop {(p.GetMethod?.IsPublic == true ? "+" : "-")} {p.PropertyType.Name} {p.Name}");
+foreach (var m in ec.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static | BindingFlags.DeclaredOnly))
+    Console.WriteLine($"meth {(m.IsPublic ? "+" : "-")} {m.ReturnType.Name} {m.Name}({string.Join(",", m.GetParameters().Select(p => p.ParameterType.Name + " " + p.Name))})");
+
+// CardModel.Type — как определить Power
+var cm = asm.GetTypes().First(t => t.Name == "CardModel");
+var typeProp = cm.GetProperty("Type");
+Console.WriteLine($"CardModel.Type: {typeProp?.PropertyType.FullName}");
