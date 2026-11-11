@@ -109,6 +109,10 @@ public static class FuseText
         ["KOLYA_MULTI_ENCHANTMENT.description"] = "На карте несколько зачарований, каждое действует.",
         ["KOLYA_ELITE_REWARD_PROMPT"] = "Трофей мутации: выберите карту для зачарования",
         ["STURDY_CLAMP.description"] = "В начале каждого хода получите [blue]{Block}[/blue] [gold]блока[/gold].",
+        ["OPTION_KOLYA_TRADE.name"] = "Обмен картами",
+        ["OPTION_KOLYA_TRADE.description"] = "Обменяться картами с напарником: каждый выбирает карту из колоды и отдаёт её другому — со всеми улучшениями и зачарованиями. Не тратит визит к костру: после обмена можно выбрать ещё действие.",
+        ["OPTION_KOLYA_TRADE.descriptionDisabled"] = "Доступно только в совместной игре.",
+        ["KOLYA_TRADE_PROMPT"] = "Обмен: выберите карту, которую отдадите напарнику",
     };
 
     [HarmonyPrefix, HarmonyPatch(nameof(LocTable.GetRawText))]
