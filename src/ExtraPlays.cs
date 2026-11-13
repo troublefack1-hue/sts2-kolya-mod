@@ -7,7 +7,9 @@ namespace KolyaMod;
 // Карты, у которых повторное улучшение ничего не меняет (docs/card_upgrades.md), получают за лишние уровни
 // бонус: карты со словом-свойством — дополнительные применения со 2-го уровня, карты с удешевлением —
 // после того, как цена дошла до 0, прочие — +2 к первому числовому стату (StatUpgrade), а если чисел нет —
-// дополнительное применение за уровень. Игра сама пишет «Повтор N» на карте и в подсказке.
+// дополнительное применение. Баланс 0.3.19: повтор за каждый ВТОРОЙ лишний уровень и не больше 3 повторов
+// (было: за каждый уровень — карта «+6» игралась 6 раз, прокачка была слишком быстрой).
+// Игра сама пишет «Повтор N» на карте и в подсказке.
 [HarmonyPatch(typeof(CardModel), nameof(CardModel.GetEnchantedReplayCount))]
 public static class ExtraPlays
 {
@@ -41,15 +43,19 @@ public static class ExtraPlays
         ["Zap"] = 1,
     };
 
+    public const int MaxBonus = 3;   // потолок повторов (0.3.19)
+
+    // повтор за каждый второй лишний уровень, максимум MaxBonus (0.3.19: было за каждый — слишком быстро)
+    static int Repeats(int extraLevels) => System.Math.Min(MaxBonus, System.Math.Max(extraLevels, 0) / 2);
+
     public static int Bonus(CardModel card)
     {
         var name = card.GetType().Name;
-        if (Keyword.Contains(name)) return System.Math.Max(card.CurrentUpgradeLevel - 1, 0);
-        if (CostLevels.TryGetValue(name, out var toZero)) return System.Math.Max(card.CurrentUpgradeLevel - toZero, 0);
-        // прочие карты: с числовыми статами рост идёт через StatUpgrade (+2 к стату за уровень);
-        // без статов — повтор за каждый уровень после первого, чтобы улучшение было видно всегда
+        if (Keyword.Contains(name)) return Repeats(card.CurrentUpgradeLevel - 1);
+        if (CostLevels.TryGetValue(name, out var toZero)) return Repeats(card.CurrentUpgradeLevel - toZero);
+        // прочие карты: с числовыми статами рост идёт через StatUpgrade; без статов — повторы
         if (StatUpgrade.HasStatVar(card)) return 0;
-        return System.Math.Max(card.CurrentUpgradeLevel - 1, 0);
+        return Repeats(card.CurrentUpgradeLevel - 1);
     }
 
     static void Postfix(CardModel __instance, ref int __result) => __result += Bonus(__instance);

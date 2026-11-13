@@ -59,6 +59,9 @@ public static class StatUpgrade
             Log.Info($"[kolya_mod] талант: {card.Id} цена снижена до {card.EnergyCost.Canonical} (уровень {card.CurrentUpgradeLevel})");
             return;
         }
+        // баланс 0.3.19: прибавка +2 только на чётных уровнях (в среднем +1 за уровень вместо +2) —
+        // с костром «+2 за отдых» карты качались слишком быстро
+        if (card.CurrentUpgradeLevel % 2 != 0) return;
         var stat = PickStat(card.DynamicVars);
         if (stat == null) return; // нет статов — повторы даёт ExtraPlays
         stat.UpgradeValueBy(Amount);

@@ -13,8 +13,10 @@ using MegaCrit.Sts2.Core.Saves.Runs;
 
 namespace KolyaMod;
 
-// Улучшение реликвий. Победа в бою, где был хоть один мутированный враг, улучшает одну
-// случайную реликвию каждого игрока: +1 ко всем её числовым параметрам. Реликвии хранят
+// Улучшение реликвий. Победа над мутированной ЭЛИТОЙ или БОССОМ улучшает одну
+// случайную реликвию каждого игрока: +1 ко всем её числовым параметрам (баланс 0.3.19:
+// раньше — за любой бой с мутантом, а мутанты с каждого врага с 1-го акта — реликвии росли
+// каждый бой; за обычных мобов теперь золото, MutationBounty). Реликвии хранят
 // свои числа в DynamicVars (эффекты читают BaseValue при срабатывании — проверено на
 // Ваджре и Якоре), поэтому рост работает для любой реликвии с числами. Уровень пишется
 // в Props сохранения и переприменяется при загрузке. Выбор случайной реликвии идёт через
@@ -50,6 +52,10 @@ public static class RelicUpgrade
         static void Postfix(IRunState runState, ICombatState combatState, CombatRoom room, ref Task __result)
         {
             if (combatState?.Encounter == null) return;
+            // баланс 0.3.19: реликвия — только за элиту и боссов (было: за любой бой с мутантом,
+            // а мутанты — каждый враг с 1-го акта, реликвии росли каждый бой); за мобов — золото (MutationBounty)
+            var type = combatState.Encounter.RoomType;
+            if (type != RoomType.Elite && type != RoomType.Boss) return;
             if (!combatState.Enemies.Any(Mutations.IsMutated)) return;
             __result = Reward(__result, runState);
         }

@@ -10,16 +10,18 @@ using MegaCrit.Sts2.Core.Runs;
 
 namespace KolyaMod;
 
-// Награда за мутированных врагов на актах 1–3: фиксированное золото за каждого убитого
-// (10/15/20 за акт 1/2/3) каждому игроку. Суммы без генератора случайности —
-// в совместной игре все клиенты выдадут одно и то же.
+// Награда за мутированных врагов: фиксированное золото за каждого убитого
+// (10/15/20/… +5 за акт) каждому игроку, обычные враги и элита. Суммы без генератора случайности —
+// в совместной игре все клиенты выдадут одно и то же. Баланс 0.3.19: распространено на все акты
+// (реликвия за мобов убрана в RelicUpgrade — теперь она за элиту и боссов).
 [HarmonyPatch(typeof(Hook), nameof(Hook.AfterCombatVictory))]
 public static class MutationBounty
 {
     static void Postfix(IRunState runState, ICombatState combatState, CombatRoom room, ref Task __result)
     {
         int act = runState.CurrentActIndex;
-        if (act >= 3 || room.Encounter?.RoomType != RoomType.Monster) return;
+        var type = room.Encounter?.RoomType;
+        if (type != RoomType.Monster && type != RoomType.Elite) return;
         __result = Reward(__result, runState, combatState, act);
     }
 
