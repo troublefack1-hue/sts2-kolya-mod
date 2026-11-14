@@ -48,7 +48,23 @@ public static class Mutations
         ("Ритуал",          Fam.Атака,    (c, a) => Give<RitualPower>(c, 2 + a / 4)),
         ("Отравитель",      Fam.Заражение,(c, a) => { Poisoner.Mark(c); return Task.CompletedTask; }),
         ("Регенерация",     Fam.Заражение,(c, a) => Give<RegenPower>(c, 6 + a)),
+        // 0.3.20: принципиально новые приёмы — ответ на «сидят в броне» (NewTactics.cs)
+        ("Гниение",         Fam.Заражение,(c, a) => { NewTactics.MarkCorrode(c); return Task.CompletedTask; }),
+        ("Порча",           Fam.Контроль, (c, a) => HexPlayers(c)),
+        ("Призыв",          Fam.Атака,    (c, a) => Give<SummonNextTurnPower>(c, 1)),
     };
+
+    // «Порча»: ванильный Hex на каждого игрока — карты в руке прокляты (afflict)
+    static async Task HexPlayers(Creature source)
+    {
+        var players = source.CombatState?.Players;
+        if (players == null) return;
+        foreach (var p in players)
+        {
+            await PowerCmd.Apply<HexPower>(new ThrowingPlayerChoiceContext(), p.Creature, 1, source, null);
+            Log.Info($"[kolya_mod] порча: игрок {p.NetId} проклят ({source.Monster?.Id})");
+        }
+    }
 
     static Task Give<T>(Creature c, decimal amount) where T : PowerModel =>
         PowerCmd.Apply<T>(new ThrowingPlayerChoiceContext(), c, amount, c, null);
@@ -83,11 +99,14 @@ public static class Mutations
         if (count == 0) return;
         // игровой генератор забега: у всех игроков совместной игры мутации совпадут
         var rng = runState.Rng.Niche;
+        bool bossFight = combat.Encounter.RoomType == RoomType.Boss;
         foreach (var enemy in combat.Enemies.ToList())
         {
             if (MutatedEnemies.Contains(enemy)) continue;
             // случайный выбор без возврата: одно семейство — одна мутация на врага
             var pool = All.ToList();
+            // «Призыв» боссам не даём: подмога боссу ломает бой (NewTactics)
+            if (bossFight) pool.RemoveAll(p => p.Name == "Призыв");
             var taken = new HashSet<Fam>();
             for (int i = 0; i < count && pool.Count > 0; i++)
             {
