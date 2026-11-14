@@ -3,7 +3,7 @@
   "name": "Kolya Mod",
   "author": "kolya",
   "description": "Заготовка мода.",
-  "version": "0.3.25",
+  "version": "0.3.26",
   "has_dll": true,
   "has_pck": false,
   "affects_gameplay": true,
