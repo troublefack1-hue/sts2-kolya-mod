@@ -29,7 +29,7 @@ public static class ExtraPlays
     // улучшение — удешевление: сколько уровней уходит на то, чтобы цена дошла до 0
     internal static readonly Dictionary<string, int> CostLevels = new()
     {
-        ["Alchemize"] = 1, ["Apotheosis"] = 2, ["Automation"] = 1, ["BansheesCry"] = 5, ["Barricade"] = 3,
+        ["Alchemize"] = 1, ["Automation"] = 1, ["BansheesCry"] = 5, ["Barricade"] = 3,
         ["BodySlam"] = 1, ["BulletTime"] = 3, ["Calamity"] = 3, ["Corruption"] = 3, ["CreativeAi"] = 3,
         ["DarkEmbrace"] = 2, ["Demesne"] = 3, ["Distraction"] = 1, ["DoubleEnergy"] = 1, ["Dualcast"] = 1,
         ["Eidolon"] = 2, ["Entrench"] = 2, ["ExpectAFight"] = 2, ["Feral"] = 2, ["Flanking"] = 2,
@@ -43,6 +43,16 @@ public static class ExtraPlays
         ["Zap"] = 1,
     };
 
+    // Карты, которым повторы за лишние уровни запрещены: массовый апгрейд колоды сам себя
+    // разгоняет — улучшенный Апофеоз с повторами прокачивает ВСЕ карты несколько раз за бой
+    // каждый бой (жалоба Коли: кинжалы на 600 урона). Без повторов он ванильный: один
+    // розыгрыш — один ванильный апгрейд всех карт. Убран из CostLevels — иначе упал бы
+    // в ветку «прочие карты без статов» и получил бы повторы ещё раньше (баланс 0.3.29).
+    internal static readonly HashSet<string> NoRepeats = new()
+    {
+        "Apotheosis",
+    };
+
     public const int MaxBonus = 3;   // потолок повторов (0.3.19)
 
     // повтор за каждый второй лишний уровень, максимум MaxBonus (0.3.19: было за каждый — слишком быстро)
@@ -51,6 +61,7 @@ public static class ExtraPlays
     public static int Bonus(CardModel card)
     {
         var name = card.GetType().Name;
+        if (NoRepeats.Contains(name)) return 0;
         if (Keyword.Contains(name)) return Repeats(card.CurrentUpgradeLevel - 1);
         if (CostLevels.TryGetValue(name, out var toZero)) return Repeats(card.CurrentUpgradeLevel - toZero);
         // прочие карты: с числовыми статами рост идёт через StatUpgrade; без статов — повторы
