@@ -28,6 +28,12 @@ public static class StatUpgrade
         {
             var v = kv.Value;
             var t = v.GetType();
+            // 0.3.32: EnergyVar — полноценный стат. Без этого энергокарты (Адреналин, Турбо,
+            // Кровопускание, Двойная энергия и др.) не считались «с картой статов» и падали
+            // в ветку ExtraPlays «прочих карт» — получали ПОВТОРЫ за уровни и разгоняли
+            // бесконечную ману. Теперь: повторов нет, энергия растёт через StatUpgrade
+            // с потолком StatCap.EnergyCap (+4), потом рост уходит в прочие статы.
+            if (t == typeof(EnergyVar)) { if (!StatCap.IsCapped(v)) return v; continue; }
             if (t == typeof(DamageVar)) { if (!StatCap.IsCapped(v)) return v; continue; }
             if (t == typeof(BlockVar)) { if (block == null && !StatCap.IsCapped(v)) block = v; continue; }
             if (t.IsGenericType && t.GetGenericTypeDefinition() == typeof(PowerVar<>)) { power ??= v; continue; }
