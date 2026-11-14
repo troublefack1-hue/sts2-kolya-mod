@@ -14,18 +14,32 @@ namespace KolyaMod;
 [HarmonyPatch(typeof(CardModel), nameof(CardModel.GetEnchantedReplayCount))]
 public static class ExtraPlays
 {
-    // улучшение — слово-свойство: повторы со 2-го уровня
+    // улучшение — слово-свойство: повторы со 2-го уровня.
+    // 0.3.36: 16 талантов убраны — повтор у таланта ничего не даёт (мёртвый бонус);
+    // они попали в StatUpgrade и получают удешевление до 0, как остальные таланты.
     internal static readonly HashSet<string> Keyword = new()
     {
-        "Afterimage", "Aggression", "Anointed", "Apparition", "Arsenal", "BeaconOfHope",
-        "BigBang", "CalculatedGamble", "CallOfTheVoid", "Chill", "DemonicShield", "Discovery",
-        "Dredge", "EchoForm", "Entropy", "Fusion", "GoldAxe", "HelloWorld",
-        "Hotfix", "Ignition", "InfiniteBlades", "Juggling", "KnowThyPlace", "MachineLearning",
-        "MadScience", "Mimic", "Monologue", "Prolong", "Rainbow", "ReaperForm",
-        "RoyalGamble", "Scare", "Scrawl", "SecretTechnique", "SecretWeapon", "Speedster",
-        "Synchronize", "ThinkingAhead", "TimesUp", "Transfigure", "TrashToTreasure", "Tyranny",
-        "VoidForm", "Voltaic", "Wish", "Wisp",
+        "Anointed", "Apparition", "BigBang", "CalculatedGamble", "Chill", "DemonicShield",
+        "Discovery", "Dredge", "Fusion", "GoldAxe", "Hotfix", "Ignition",
+        "KnowThyPlace", "MadScience", "Mimic", "Monologue", "Prolong", "Rainbow",
+        "RoyalGamble", "Scare", "Scrawl", "SecretTechnique", "SecretWeapon",
+        "Synchronize", "ThinkingAhead", "TimesUp", "Transfigure", "Voltaic", "Wish", "Wisp",
     };
+
+    // 0.3.36: карты-множители — повторы удваивают/растягивают весь эффект (анализ docs/risky_cards.md).
+    // Обычный потолок +3 слишком жирный: X-cost разгоняют ход бесконечно, Shadowmeld даёт x8 блок.
+    internal static readonly HashSet<string> SoftRepeats = new()
+    {
+        "Cascade", "MultiCast", "Tempest", "Malaise",     // X-cost: повтор = тот же X ещё раз
+        "Shadowmeld",                                    // блок x4/x8 с Unmovable
+        "Nightmare",                                     // 6 копий любой карты
+        "SignalBoost",                                   // талант x3
+        "Monologue",                                     // +2 Силы за каждую карту в ход
+        "Voltaic",                                       // саморазгон накопленных молний
+        "Quadcast", "Eidolon",                           // 8 эвоков / сброс Эфирных дважды
+    };
+
+    static int SoftCap(string name) => SoftRepeats.Contains(name) ? 1 : MaxBonus;
 
     // улучшение — удешевление: сколько уровней уходит на то, чтобы цена дошла до 0
     internal static readonly Dictionary<string, int> CostLevels = new()
@@ -67,19 +81,20 @@ public static class ExtraPlays
         return false;
     }
 
-    // повтор за каждый второй лишний уровень, максимум MaxBonus (0.3.19: было за каждый — слишком быстро)
-    static int Repeats(int extraLevels) => System.Math.Min(MaxBonus, System.Math.Max(extraLevels, 0) / 2);
+    // повтор за каждый второй лишний уровень, максимум потолка (0.3.19: было за каждый — слишком быстро)
+    static int Repeats(int extraLevels, string name) =>
+        System.Math.Min(SoftCap(name), System.Math.Max(extraLevels, 0) / 2);
 
     public static int Bonus(CardModel card)
     {
         var name = card.GetType().Name;
         if (NoRepeats.Contains(name)) return 0;
         if (HasEnergyVar(card)) return 0;
-        if (Keyword.Contains(name)) return Repeats(card.CurrentUpgradeLevel - 1);
-        if (CostLevels.TryGetValue(name, out var toZero)) return Repeats(card.CurrentUpgradeLevel - toZero);
+        if (Keyword.Contains(name)) return Repeats(card.CurrentUpgradeLevel - 1, name);
+        if (CostLevels.TryGetValue(name, out var toZero)) return Repeats(card.CurrentUpgradeLevel - toZero, name);
         // прочие карты: с числовыми статами рост идёт через StatUpgrade; без статов — повторы
         if (StatUpgrade.HasStatVar(card)) return 0;
-        return Repeats(card.CurrentUpgradeLevel - 1);
+        return Repeats(card.CurrentUpgradeLevel - 1, name);
     }
 
     static void Postfix(CardModel __instance, ref int __result) => __result += Bonus(__instance);
