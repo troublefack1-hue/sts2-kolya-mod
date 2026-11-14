@@ -129,7 +129,14 @@ public static class Mutations
             {
                 if (behaviorFirst && i == 0)
                 {
-                    int idx = rng.NextInt(Enum.GetValues<BehaviorMutations.Kind>().Length);
+                    // мутация комнаты выбирается хэшем (сид забега, координаты точки) — та же,
+                    // что в подсказке на карте (src/MutationMapTip.cs); rng — запасной путь
+                    int idx;
+                    var coord = runState.CurrentMapCoord;
+                    if (coord.HasValue)
+                        idx = BehaviorMutations.IndexFor(runState.Rng.Seed, coord.Value.row, coord.Value.col);
+                    else
+                        idx = rng.NextInt(BehaviorMutations.Count);
                     var name = await BehaviorMutations.Apply(idx, enemy, act);
                     MutatedEnemies.Add(enemy);
                     Log.Info($"[kolya_mod] поведенческая мутация {name} на элитку {enemy.Monster?.Id} (акт {act + 1})");
