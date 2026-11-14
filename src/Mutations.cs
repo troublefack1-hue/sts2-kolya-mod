@@ -51,7 +51,7 @@ public static class Mutations
         // 0.3.20: принципиально новые приёмы — ответ на «сидят в броне» (NewTactics.cs)
         ("Гниение",         Fam.Заражение,(c, a) => { NewTactics.MarkCorrode(c); return Task.CompletedTask; }),
         ("Порча",           Fam.Контроль, (c, a) => HexPlayers(c)),
-        ("Призыв",          Fam.Атака,    (c, a) => Give<SummonNextTurnPower>(c, 1)),
+        ("Подавление",      Fam.Атака,    (c, a) => CrushPlayers(c, 1 + a / 4)),
     };
 
     // «Порча»: ванильный Hex на каждого игрока — карты в руке прокляты (afflict)
@@ -63,6 +63,20 @@ public static class Mutations
         {
             await PowerCmd.Apply<HexPower>(new ThrowingPlayerChoiceContext(), p.Creature, 1, source, null);
             Log.Info($"[kolya_mod] порча: игрок {p.NetId} проклят ({source.Monster?.Id})");
+        }
+    }
+
+    // «Подавление»: ванильные Слабость и Уязвимость на каждого игрока — бьёт по «сиди в броне»:
+    // атаки слабее, а получаемый урон выше, блок не спасает
+    static async Task CrushPlayers(Creature source, long amount)
+    {
+        var players = source.CombatState?.Players;
+        if (players == null) return;
+        foreach (var p in players)
+        {
+            await PowerCmd.Apply<WeakPower>(new ThrowingPlayerChoiceContext(), p.Creature, amount, source, null);
+            await PowerCmd.Apply<VulnerablePower>(new ThrowingPlayerChoiceContext(), p.Creature, amount, source, null);
+            Log.Info($"[kolya_mod] подавление: игрок {p.NetId} ослаблен ({source.Monster?.Id})");
         }
     }
 
@@ -105,8 +119,6 @@ public static class Mutations
             if (MutatedEnemies.Contains(enemy)) continue;
             // случайный выбор без возврата: одно семейство — одна мутация на врага
             var pool = All.ToList();
-            // «Призыв» боссам не даём: подмога боссу ломает бой (NewTactics)
-            if (bossFight) pool.RemoveAll(p => p.Name == "Призыв");
             var taken = new HashSet<Fam>();
             for (int i = 0; i < count && pool.Count > 0; i++)
             {
