@@ -51,6 +51,8 @@ public static class ExtraPlays
     internal static readonly HashSet<string> NoRepeats = new()
     {
         "Apotheosis",
+        // 0.3.31: «Прилив сил» раздаёт энергию всей команде; повторы превращали её в бесконечный ход
+        "EnergySurge",
     };
 
     public const int MaxBonus = 3;   // потолок повторов (0.3.19)

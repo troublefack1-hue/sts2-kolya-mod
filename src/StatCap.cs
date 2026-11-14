@@ -20,6 +20,9 @@ public static class StatCap
     public const decimal DamageCap = 30m;
     public const decimal BlockCap = 40m;
     public const decimal OtherCap = 30m;
+    // энергия — особый случай (0.3.31): «Прилив сил» раздаёт энергию ВСЕМ напарникам,
+    // а безлимитный апгрейд превращал её в бесконечный двигатель ходов. Потолок жёстче.
+    public const decimal EnergyCap = 4m;
 
     class Track { public decimal Initial; public bool Set; }
     static readonly ConditionalWeakTable<DynamicVar, Track> Tracks = new();
@@ -28,6 +31,7 @@ public static class StatCap
     {
         DamageVar => DamageCap,
         BlockVar => BlockCap,
+        EnergyVar => EnergyCap,
         _ => OtherCap,
     };
 
