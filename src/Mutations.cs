@@ -116,6 +116,9 @@ public static class Mutations
         // игровой генератор забега: у всех игроков совместной игры мутации совпадут
         var rng = runState.Rng.Niche;
         bool bossFight = combat.Encounter.RoomType == RoomType.Boss;
+        // элитки актов 1–3: вместо первой статовой — одна поведенческая мутация яруса I
+        // (docs/mutation_library.md): риск читается в бою, трофей мутации за неё сохраняется
+        bool behaviorFirst = combat.Encounter.RoomType == RoomType.Elite && act < 4;
         foreach (var enemy in combat.Enemies.ToList())
         {
             if (MutatedEnemies.Contains(enemy)) continue;
@@ -124,6 +127,14 @@ public static class Mutations
             var taken = new HashSet<Fam>();
             for (int i = 0; i < count && pool.Count > 0; i++)
             {
+                if (behaviorFirst && i == 0)
+                {
+                    int idx = rng.NextInt(Enum.GetValues<BehaviorMutations.Kind>().Length);
+                    var name = await BehaviorMutations.Apply(idx, enemy, act);
+                    MutatedEnemies.Add(enemy);
+                    Log.Info($"[kolya_mod] поведенческая мутация {name} на элитку {enemy.Monster?.Id} (акт {act + 1})");
+                    continue;
+                }
                 var avail = pool.Where(p => !taken.Contains(p.Family)).ToList();
                 if (avail.Count == 0) avail = pool;
                 var pick = avail[rng.NextInt(avail.Count)];
