@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using HarmonyLib;
+using MegaCrit.Sts2.Core.Localization.DynamicVars;
 using MegaCrit.Sts2.Core.Models;
 
 namespace KolyaMod;
@@ -57,6 +58,15 @@ public static class ExtraPlays
 
     public const int MaxBonus = 3;   // потолок повторов (0.3.19)
 
+    // 0.3.33: карта даёт энергию (EnergyVar) — повторы за уровни запрещены (бесконечная мана),
+    // вместо них удешевление (StatUpgrade) и ванильный рост энергии (под потолком StatCap).
+    public static bool HasEnergyVar(CardModel card)
+    {
+        foreach (var kv in card.DynamicVars)
+            if (kv.Value is EnergyVar) return true;
+        return false;
+    }
+
     // повтор за каждый второй лишний уровень, максимум MaxBonus (0.3.19: было за каждый — слишком быстро)
     static int Repeats(int extraLevels) => System.Math.Min(MaxBonus, System.Math.Max(extraLevels, 0) / 2);
 
@@ -64,6 +74,7 @@ public static class ExtraPlays
     {
         var name = card.GetType().Name;
         if (NoRepeats.Contains(name)) return 0;
+        if (HasEnergyVar(card)) return 0;
         if (Keyword.Contains(name)) return Repeats(card.CurrentUpgradeLevel - 1);
         if (CostLevels.TryGetValue(name, out var toZero)) return Repeats(card.CurrentUpgradeLevel - toZero);
         // прочие карты: с числовыми статами рост идёт через StatUpgrade; без статов — повторы
