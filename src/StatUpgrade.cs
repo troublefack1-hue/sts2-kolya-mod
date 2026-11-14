@@ -28,8 +28,8 @@ public static class StatUpgrade
         {
             var v = kv.Value;
             var t = v.GetType();
-            if (t == typeof(DamageVar)) return v;
-            if (t == typeof(BlockVar)) { block ??= v; continue; }
+            if (t == typeof(DamageVar)) { if (!StatCap.IsCapped(v)) return v; continue; }
+            if (t == typeof(BlockVar)) { if (block == null && !StatCap.IsCapped(v)) block = v; continue; }
             if (t.IsGenericType && t.GetGenericTypeDefinition() == typeof(PowerVar<>)) { power ??= v; continue; }
             if (t == typeof(HealVar)) heal ??= v;
         }
