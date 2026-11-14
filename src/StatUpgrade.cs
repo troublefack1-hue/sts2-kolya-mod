@@ -55,17 +55,10 @@ public static class StatUpgrade
         if (card.CurrentUpgradeLevel <= 1) return;
         var name = card.GetType().Name;
         if (ExtraPlays.Keyword.Contains(name) || ExtraPlays.CostLevels.ContainsKey(name)) return;
-        // 0.3.33: энергокарты — вместо повторов (запрещены в ExtraPlays) удешевление на нечётных
-        // уровнях, пока цена не станет 0; энергия растёт ванильным апгрейдом карты,
-        // суммарно не выше StatCap.EnergyCap (+4). Ставим ДО проверки «ваниль что-то изменило»:
-        // у энергокарт ванильный апгрейд как раз меняет EnergyVar.
-        if (ExtraPlays.HasEnergyVar(card) && card.CurrentUpgradeLevel % 2 != 0
-            && !card.EnergyCost.CostsX && card.EnergyCost.Canonical > 0)
-        {
-            card.EnergyCost.UpgradeBy(-1);
-            Log.Info($"[kolya_mod] энергокарта: {card.Id} цена снижена до {card.EnergyCost.Canonical} (уровень {card.CurrentUpgradeLevel})");
-            return;
-        }
+        // 0.3.33/0.3.34: энергокарты не получают ни повторов (ExtraPlays), ни удешевления —
+        // бесплатная энергокарта = тот же бесконечный ход через прокрутку колоды (аргумент Коли).
+        // Растут только ванильным апгрейдом энергии, суммарно не выше StatCap.EnergyCap (+4).
+        if (ExtraPlays.HasEnergyVar(card)) return;
         // ванильное улучшение само что-то изменило? значит карта уже растёт — не дублируем прибавку
         foreach (var kv in card.DynamicVars)
             if (__state.TryGetValue(kv.Key, out var before) && kv.Value.BaseValue != before) return;
