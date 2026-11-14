@@ -52,6 +52,8 @@ public static class Mutations
         ("Гниение",         Fam.Заражение,(c, a) => { NewTactics.MarkCorrode(c); return Task.CompletedTask; }),
         ("Порча",           Fam.Контроль, (c, a) => HexPlayers(c)),
         ("Подавление",      Fam.Атака,    (c, a) => CrushPlayers(c, 1 + a / 4)),
+        // 0.3.30: призыватель (Summoner.cs) — враг зовёт себе подмогу того же вида
+        ("Призыватель",     Fam.Атака,    (c, a) => { Summoner.Mark(c); return Task.CompletedTask; }),
     };
 
     // «Порча»: ванильный Hex на каждого игрока — карты в руке прокляты (afflict)
