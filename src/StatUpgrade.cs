@@ -55,10 +55,22 @@ public static class StatUpgrade
         if (card.CurrentUpgradeLevel <= 1) return;
         var name = card.GetType().Name;
         if (ExtraPlays.Keyword.Contains(name) || ExtraPlays.CostLevels.ContainsKey(name)) return;
-        // 0.3.33/0.3.34: энергокарты не получают ни повторов (ExtraPlays), ни удешевления —
-        // бесплатная энергокарта = тот же бесконечный ход через прокрутку колоды (аргумент Коли).
-        // Растут только ванильным апгрейдом энергии, суммарно не выше StatCap.EnergyCap (+4).
-        if (ExtraPlays.HasEnergyVar(card)) return;
+        // 0.3.35: энергокарты — принцип Коли «нет стата — не повод не дать». Впрыснуть голый
+        // стат нельзя (эффект карт написан в их коде), поэтому даём УНИВЕРСАЛЬНОЕ свойство:
+        // случайное безопасное зачарование из пула FifthUpgradeEnchant на нечётных уровнях
+        // (3, 5, 7...). Пул сам себя исчерпывает — повторных типов не даёт. Повторов и
+        // удешевления у энергокарт нет (0.3.33/0.3.34: бесплатная энергокарта = бесконечный
+        // ход через прокрутку колоды), энергия растёт ванильным апгрейдом до StatCap (+4).
+        if (ExtraPlays.HasEnergyVar(card))
+        {
+            if (card.CurrentUpgradeLevel >= 3 && card.CurrentUpgradeLevel % 2 == 1)
+            {
+                var pick = FifthUpgradeEnchant.GiveRandom(card);
+                if (pick != null)
+                    Log.Info($"[kolya_mod] энергокарта: {card.Id} зачарование {pick.Id} (уровень {card.CurrentUpgradeLevel})");
+            }
+            return;
+        }
         // ванильное улучшение само что-то изменило? значит карта уже растёт — не дублируем прибавку
         foreach (var kv in card.DynamicVars)
             if (__state.TryGetValue(kv.Key, out var before) && kv.Value.BaseValue != before) return;
