@@ -31,7 +31,9 @@ public class EnchantReward : Reward
 
     protected override RewardType RewardType => RewardType.None;
     public override int RewardsSetIndex => 30;   // после ванильных кнопок (23–27)
-    public override LocString Description => new("rewards_ui", "KOLYA_ENCHANT_REWARD");
+    // Таблица указана существующая (rest_site_ui): LocManager.GetTable("rewards_ui") не находит
+    // такой таблицы — текст до словаря FuseText не доходил, на кнопке был сырой ключ (0.3.38).
+    public override LocString Description => new("rest_site_ui", "KOLYA_ENCHANT_REWARD");
     public override bool IsPopulated => true;
     public override void Populate() { }
     public override void MarkContentAsSeen() { }
