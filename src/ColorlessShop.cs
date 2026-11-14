@@ -46,6 +46,14 @@ public static class ColorlessShop
                 if (!pool.Any(c => c.Rarity == rarity)) continue;
                 var entry = new MerchantCardEntry(player, __instance, pool, rarity);
                 entry.Populate();
+                // Populate молча возвращает запись с пустой картой, если подходящие карты
+                // уже забраны ванильными слотами (Except в NextItem) — такой слот рисуется
+                // серой рамкой с ценой 99 и ломает витрину. Незаполненный слот не добавляем.
+                if (!entry.IsStocked)
+                {
+                    Log.Info($"[kolya_mod] нейтральный слот «{rarity}» пропущен: карты кончились");
+                    continue;
+                }
                 entries.Add(entry);
                 Log.Info($"[kolya_mod] магазин: нейтральный слот «{rarity}» (акт {act + 1})");
             }
