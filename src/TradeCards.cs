@@ -16,11 +16,14 @@ using MegaCrit.Sts2.Core.Models;
 
 namespace KolyaMod;
 
-// «Обмен картами» у костра (только кооп): каждый игрок выбирает карту из своей колоды
-// и отдаёт её следующему (вдвоём — простой обмен). Карта переносится целиком: уровни
-// улучшений (+N), зачарования, слияния. Действие НЕ завершает костёр — после обмена
-// можно выбрать ещё опцию (ковка, отдых). Выбор карт идёт через игровую синхронизацию,
-// перенос — через сетевые команды CardPileCmd: в совместной игре все клиенты сойдутся.
+// «Обмен картами» у костра (только кооп): игрок, выбравший опцию, отдаёт одну свою карту
+// следующему по кругу игроку (порядок фиксирован — детерминированно для всех клиентов).
+// Если оба игрока выберут обмен, каждый отдаст и получит карту — полноценный обмен.
+// Карта переносится целиком: уровни улучшений (+N), зачарования. Выбор — только своей
+// колоды (как у кузнеца/слияния), перенос — через сетевые команды CardPileCmd: в совместной
+// игре все клиенты сойдутся. Действие НЕ завершает костёр. Было: Task.WhenAll по выбору
+// карт всех игроков сразу — выбор удалённого игрока не доходил до его клиента, обмен
+// молча отменялся (жалоба «обмен всё ещё не работает»).
 public sealed class TradeRestSiteOption : RestSiteOption
 {
     public const string Id = "KOLYA_TRADE";
@@ -40,23 +43,18 @@ public sealed class TradeRestSiteOption : RestSiteOption
     {
         var players = Owner.RunState.Players.ToList();
         if (players.Count < 2) return false;
-        // оба игрока выбирают карту, которую отдадут; отказ любого отменяет обмен
-        var picks = await Task.WhenAll(players.Select(player => CardSelectCmd.FromDeckGeneric(player,
+        int me = players.FindIndex(p => p.NetId == Owner.NetId);
+        if (me < 0) return false;
+        var taker = players[(me + 1) % players.Count];
+        var pick = await CardSelectCmd.FromDeckGeneric(Owner,
             new CardSelectorPrefs(new LocString("rest_site_ui", "KOLYA_TRADE_PROMPT"), 1) { Cancelable = true },
-            _ => true)));
-        var cards = picks.Select(p => p.FirstOrDefault()).ToList();
-        if (cards.Any(c => c == null)) return false;
-        // перенос в фиксированном порядке — детерминированно для всех клиентов
-        for (int i = 0; i < players.Count; i++)
-        {
-            var giver = players[i];
-            var taker = players[(i + 1) % players.Count];
-            var card = cards[i]!;
-            await CardPileCmd.RemoveFromDeck(card, false);
-            card.Owner = taker;
-            await CardPileCmd.Add(card, taker.Deck, CardPilePosition.Random, null, false);
-            Log.Info($"[kolya_mod] обмен: {card.Id} от игрока {giver.NetId} к игроку {taker.NetId} (+{card.CurrentUpgradeLevel})");
-        }
+            _ => true);
+        var card = pick.FirstOrDefault();
+        if (card == null) return false;
+        await CardPileCmd.RemoveFromDeck(card, false);
+        card.Owner = taker;
+        await CardPileCmd.Add(card, taker.Deck, CardPilePosition.Random, null, false);
+        Log.Info($"[kolya_mod] обмен: {card.Id} от игрока {Owner.NetId} к игроку {taker.NetId} (+{card.CurrentUpgradeLevel})");
         return false; // костёр не завершается — остаются ковка и отдых
     }
 }
