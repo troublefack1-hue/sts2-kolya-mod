@@ -115,13 +115,21 @@ public static class MutationMapTip
                 var shown = root;
                 Log.Info($"[kolya_mod] тултип: под мышью {(shown == null ? "ничего" : shown.GetType().Name)} (акт {_act})");
             }
-            // только элитки непройденных комнат; мутации есть на актах 1–5 (0-based 0–4)
+            // элитки и боссы непройденных комнат: элитки — ярус по акту (I на 1–2, II на 3–5,
+            // III на 6+), боссы — босс-пул с 4-го акта
             if (hovered != null && frames % 300 == 0)
                 Log.Info($"[kolya_mod] тултип: точка тип={hovered.Point?.PointType} стейт={hovered.State} coord={(CoordField?.GetValue(hovered.Point) is MapCoord mc ? $"{mc.row},{mc.col}" : "нет")}");
+            bool isElite = hovered?.Point?.PointType == MapPointType.Elite;
+            bool isBoss = hovered?.Point?.PointType == MapPointType.Boss;
             if (hovered?.Point == null
-                || hovered.Point.PointType != MapPointType.Elite
-                || hovered.State == MapPointState.Traveled
-                || _act > 4)
+                || (!isElite && !isBoss)
+                || hovered.State == MapPointState.Traveled)
+            {
+                Hide();
+                return;
+            }
+            var actForTip = _act < 0 ? 0 : _act;
+            if (isBoss && actForTip < 3)
             {
                 Hide();
                 return;
@@ -133,10 +141,23 @@ public static class MutationMapTip
                     Hide();
                     return;
                 }
-                var actForTip = _act < 0 ? 0 : _act;
-                var idx = BehaviorMutations.IndexFor(_seed, coord.row, coord.col);
-                if (actForTip >= 2) idx += BehaviorMutations.TierCount;   // акты 3–5 — ярус II
-                var (name, desc) = BehaviorMutations.Info(idx, actForTip);
+                string name, desc;
+                if (isBoss)
+                {
+                    var bidx = HeavyMutations.IndexForBoss(_seed, coord.row, coord.col);
+                    (name, desc) = HeavyMutations.InfoBoss(bidx, actForTip);
+                }
+                else if (actForTip >= 5)
+                {
+                    var iidx = HeavyMutations.IndexFor3(_seed, coord.row, coord.col);
+                    (name, desc) = HeavyMutations.Info3(iidx, actForTip);
+                }
+                else
+                {
+                    var idx = BehaviorMutations.IndexFor(_seed, coord.row, coord.col);
+                    if (actForTip >= 2) idx += BehaviorMutations.TierCount;   // акты 3–5 — ярус II
+                    (name, desc) = BehaviorMutations.Info(idx, actForTip);
+                }
                 _title!.Text = "⚠ Мутация: " + name;
                 _desc!.Text = desc;
                 _for = hovered;
