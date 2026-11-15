@@ -7,9 +7,10 @@ using MegaCrit.Sts2.Core.Nodes.Screens.Map;
 
 namespace KolyaMod;
 
-// Подсказка на карте: наводишь курсор на элитку (акты 1–3) — видишь, какая поведенческая
-// мутация её ждёт. Мутация выбирается хэшем (сид забега, координаты комнаты) — та же самая
-// применяется в бою (BehaviorMutations.IndexFor, Mutations.cs), поэтому подсказка не врёт.
+// Подсказка на карте: наводишь курсор на элитку (акты 1–5) — видишь, какая поведенческая
+// мутация её ждёт (акты 1–2 — ярус I, акты 3–5 — ярус II). Мутация выбирается хэшем
+// (сид забега, координаты комнаты) — та же самая применяется в бою
+// (BehaviorMutations.IndexFor, Mutations.cs), поэтому подсказка не врёт.
 //
 // ВАЖНО про устройство: мод собирается БЕЗ Godot source generator (обычный Microsoft.NET.Sdk),
 // поэтому свой класс-наследник Node с override _Ready/_Process НЕ ПОЛУЧАЕТ привязок и его
@@ -24,17 +25,15 @@ public static class MutationMapTip
     [HarmonyPatch(typeof(NMapScreen), nameof(NMapScreen.Initialize))]
     static class GrabAct
     {
-        static void Prefix(MegaCrit.Sts2.Core.Runs.RunState runState) =>
+        static void Prefix(MegaCrit.Sts2.Core.Runs.RunState runState)
+        {
             _act = runState.CurrentActIndex;
+            // сид берём ТОЛЬКО отсюда: SetMap получает сид карты, который может отличаться
+            // от сида забега, — тогда хэш подсказки и хэш боя разъезжаются
+            _seed = runState.Rng.Seed;
+        }
     }
 
-    [HarmonyPatch(typeof(NMapScreen), nameof(NMapScreen.SetMap))]
-    static class GrabSeed
-    {
-        static void Prefix(uint seed) => _seed = seed;
-    }
-
-    // раньше узел цеплялся в _Ready — без генератора его методы мертвы, тултип не появлялся
     [HarmonyPatch(typeof(NMapScreen), nameof(NMapScreen.SetMap))]
     static class Attach
     {
@@ -116,13 +115,13 @@ public static class MutationMapTip
                 var shown = root;
                 Log.Info($"[kolya_mod] тултип: под мышью {(shown == null ? "ничего" : shown.GetType().Name)} (акт {_act})");
             }
-            // только элитки непройденных комнат; мутации есть на актах 1–3
+            // только элитки непройденных комнат; мутации есть на актах 1–5 (0-based 0–4)
             if (hovered != null && frames % 300 == 0)
                 Log.Info($"[kolya_mod] тултип: точка тип={hovered.Point?.PointType} стейт={hovered.State} coord={(CoordField?.GetValue(hovered.Point) is MapCoord mc ? $"{mc.row},{mc.col}" : "нет")}");
             if (hovered?.Point == null
                 || hovered.Point.PointType != MapPointType.Elite
                 || hovered.State == MapPointState.Traveled
-                || _act >= 4)
+                || _act > 4)
             {
                 Hide();
                 return;
@@ -134,8 +133,10 @@ public static class MutationMapTip
                     Hide();
                     return;
                 }
+                var actForTip = _act < 0 ? 0 : _act;
                 var idx = BehaviorMutations.IndexFor(_seed, coord.row, coord.col);
-                var (name, desc) = BehaviorMutations.Info(idx, _act < 0 ? 0 : _act);
+                if (actForTip >= 2) idx += BehaviorMutations.TierCount;   // акты 3–5 — ярус II
+                var (name, desc) = BehaviorMutations.Info(idx, actForTip);
                 _title!.Text = "⚠ Мутация: " + name;
                 _desc!.Text = desc;
                 _for = hovered;

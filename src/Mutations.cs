@@ -116,9 +116,10 @@ public static class Mutations
         // игровой генератор забега: у всех игроков совместной игры мутации совпадут
         var rng = runState.Rng.Niche;
         bool bossFight = combat.Encounter.RoomType == RoomType.Boss;
-        // элитки актов 1–3: вместо первой статовой — одна поведенческая мутация яруса I
-        // (docs/mutation_library.md): риск читается в бою, трофей мутации за неё сохраняется
-        bool behaviorFirst = combat.Encounter.RoomType == RoomType.Elite && act < 4;
+        // элитки актов 1–5: вместо первой статовой — одна поведенческая мутация
+        // (docs/mutation_library.md): акты 1–2 — ярус I, акты 3–5 — ярус II;
+        // риск читается в бою и в подсказке на карте, трофей мутации сохраняется
+        bool behaviorFirst = combat.Encounter.RoomType == RoomType.Elite && act < 5;
         foreach (var enemy in combat.Enemies.ToList())
         {
             if (MutatedEnemies.Contains(enemy)) continue;
@@ -130,13 +131,15 @@ public static class Mutations
                 if (behaviorFirst && i == 0)
                 {
                     // мутация комнаты выбирается хэшем (сид забега, координаты точки) — та же,
-                    // что в подсказке на карте (src/MutationMapTip.cs); rng — запасной путь
+                    // что в подсказке на карте (src/MutationMapTip.cs); rng — запасной путь.
+                    // Индекс внутри яруса (0..12), акты 3–5 — со сдвигом на ярус II.
                     int idx;
                     var coord = runState.CurrentMapCoord;
                     if (coord.HasValue)
                         idx = BehaviorMutations.IndexFor(runState.Rng.Seed, coord.Value.row, coord.Value.col);
                     else
-                        idx = rng.NextInt(BehaviorMutations.Count);
+                        idx = rng.NextInt(BehaviorMutations.TierCount);
+                    if (act >= 2) idx += BehaviorMutations.TierCount;
                     var name = await BehaviorMutations.Apply(idx, enemy, act);
                     MutatedEnemies.Add(enemy);
                     Log.Info($"[kolya_mod] поведенческая мутация {name} на элитку {enemy.Monster?.Id} (акт {act + 1})");
