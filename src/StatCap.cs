@@ -46,11 +46,13 @@ public static class StatCap
     [HarmonyPatch(typeof(DynamicVar), nameof(DynamicVar.UpgradeValueBy))]
     static class Clamp
     {
-        static bool Prefix(DynamicVar __instance, decimal amount)
+        // параметр инжектим по позиции (__0): имя в сигнатуре игры менялось (addend), поиск по
+        // имени «amount» бросал HarmonyException и весь потолок статов молча отключался
+        static bool Prefix(DynamicVar __instance, decimal __0)
         {
-            if (amount <= 0m) return true;
+            if (__0 <= 0m) return true;
             if (!IsCapped(__instance)) return true;
-            Log.Info($"[kolya_mod] потолок статов: {__instance.Name} уже +{__instance.BaseValue:0.#}, прирост {amount:0.#} отклонён");
+            Log.Info($"[kolya_mod] потолок статов: {__instance.Name} уже +{__instance.BaseValue:0.#}, прирост {__0:0.#} отклонён");
             return false;
         }
     }

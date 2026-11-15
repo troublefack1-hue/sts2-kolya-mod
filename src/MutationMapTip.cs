@@ -10,9 +10,12 @@ namespace KolyaMod;
 // Подсказка на карте: наводишь курсор на элитку (акты 1–3) — видишь, какая поведенческая
 // мутация её ждёт. Мутация выбирается хэшем (сид забега, координаты комнаты) — та же самая
 // применяется в бою (BehaviorMutations.IndexFor, Mutations.cs), поэтому подсказка не врёт.
-// Реализация: свой Godot-узел добавляется к NMapScreen в его _Ready; каждый кадр смотрит,
-// какой Control под мышью (GuiGetHoveredControl) — если это NMapPoint элитки, показывает
-// панель рядом с курсором. Сид и акт подхватываются из Initialize/SetMap экрана карты.
+//
+// ВАЖНО про устройство: мод собирается БЕЗ Godot source generator (обычный Microsoft.NET.Sdk),
+// поэтому свой класс-наследник Node с override _Ready/_Process НЕ ПОЛУЧАЕТ привязок и его
+// методы движок не вызывает. Поэтому всё делается патчем ВАНИЛЬНОГО _Process экрана карты:
+// он вызывается каждый кадр, а наш UI — обычные PanelContainer/Label (встроенные классы Godot,
+// инстанцируются без генератора), которые мы лениво создаём и кладём в дерево один раз.
 public static class MutationMapTip
 {
     static uint _seed;
@@ -31,80 +34,125 @@ public static class MutationMapTip
         static void Prefix(uint seed) => _seed = seed;
     }
 
-    [HarmonyPatch(typeof(NMapScreen), "_Ready")]
+    // раньше узел цеплялся в _Ready — без генератора его методы мертвы, тултип не появлялся
+    [HarmonyPatch(typeof(NMapScreen), nameof(NMapScreen.SetMap))]
     static class Attach
     {
-        static void Postfix(NMapScreen __instance)
+        static void Postfix(NMapScreen __instance) => Ui.Ensure(__instance);
+    }
+
+    // и рабочая логика — на каждом кадре экрана карты
+    [HarmonyPatch(typeof(NMapScreen), nameof(NMapScreen._Process))]
+    static class Tick
+    {
+        static int _frames;
+        static void Postfix(NMapScreen __instance, double delta)
         {
-            __instance.AddChild(new TipNode());
-            Log.Info("[kolya_mod] тултип мутаций подключён к карте");
+            try
+            {
+                _frames++;
+                Ui.Update(__instance, _frames);
+            }
+            catch (System.Exception e)
+            {
+                if (_frames % 300 == 0)
+                    Log.Error($"[kolya_mod] тултип: {e.GetType().Name}: {e.Message}");
+            }
         }
     }
 
-    class TipNode : Node
+    static class Ui
     {
+        // поле coord ПУБЛИЧНОЕ (искали только NonPublic — получали null, координат «не было»)
         static readonly FieldInfo? CoordField = typeof(MapPoint).GetField("coord",
-            BindingFlags.NonPublic | BindingFlags.Instance);
+            BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
 
-        Control _panel = null!;
-        Label _title = null!;
-        Label _desc = null!;
-        NMapPoint? _for;
+        static Control? _panel;
+        static Label? _title, _desc;
+        static NMapPoint? _for;
 
-        public override void _Ready()
+        public static void Ensure(NMapScreen screen)
         {
-            _title = new Label { Text = "Мутация" };
-            _title.AddThemeFontSizeOverride("font_size", 18);
-            _desc = new Label { CustomMinimumSize = new Vector2(340, 0) };
-            _desc.AutowrapMode = TextServer.AutowrapMode.Word;
-            _desc.AddThemeFontSizeOverride("font_size", 14);
+            if (_panel != null && GodotObject.IsInstanceValid(_panel)) return;
+            var title = new Label();
+            title.AddThemeFontSizeOverride("font_size", 18);
+            title.AddThemeColorOverride("font_color", new Color(1f, 0.82f, 0.35f));
+            var desc = new Label { CustomMinimumSize = new Vector2(340, 0) };
+            desc.AutowrapMode = TextServer.AutowrapMode.Word;
+            desc.AddThemeFontSizeOverride("font_size", 14);
             var box = new VBoxContainer();
-            box.AddChild(_title);
-            box.AddChild(_desc);
-            _panel = new PanelContainer();
-            _panel.AddChild(box);
-            _panel.Visible = false;
-            AddChild(_panel);
+            box.AddChild(title);
+            box.AddChild(desc);
+            var panel = new PanelContainer();
+            panel.Name = "KolyaMutationTip";
+            panel.AddChild(box);
+            panel.Visible = false;
+            // поверх остального содержимого экрана
+            panel.ZIndex = 100;
+            screen.AddChild(panel);
+            _panel = panel; _title = title; _desc = desc;
+            Log.Info("[kolya_mod] тултип мутаций подключён к карте");
         }
 
-        public override void _Process(double delta)
+        public static void Update(NMapScreen screen, int frames)
         {
-            var vp = GetViewport();
-            var hovered = vp.GuiGetHoveredControl() as NMapPoint;
-            // показываем только элитки непройденных комнат; мутации есть на актах 1–3
+            if (_panel == null || !GodotObject.IsInstanceValid(_panel)) return;
+            var vp = screen.GetViewport();
+            // контрол под мышью может быть дочерним элементом точки — поднимаемся по родителям;
+            // если карта в SubViewport, смотрим и внутрь него
+            var root = vp.GuiGetHoveredControl();
+            if (root is SubViewportContainer svc && svc.GetChild(0) is SubViewport inner)
+                root = inner.GuiGetHoveredControl();
+            Control? c = root;
+            NMapPoint? hovered = null;
+            while (c != null)
+            {
+                if (c is NMapPoint np) { hovered = np; break; }
+                c = c.GetParent() as Control;
+            }
+            // диагностика: раз в ~10 секунд пишем, что реально под мышью
+            if (frames % 600 == 0)
+            {
+                var shown = root;
+                Log.Info($"[kolya_mod] тултип: под мышью {(shown == null ? "ничего" : shown.GetType().Name)} (акт {_act})");
+            }
+            // только элитки непройденных комнат; мутации есть на актах 1–3
+            if (hovered != null && frames % 300 == 0)
+                Log.Info($"[kolya_mod] тултип: точка тип={hovered.Point?.PointType} стейт={hovered.State} coord={(CoordField?.GetValue(hovered.Point) is MapCoord mc ? $"{mc.row},{mc.col}" : "нет")}");
             if (hovered?.Point == null
                 || hovered.Point.PointType != MapPointType.Elite
                 || hovered.State == MapPointState.Traveled
                 || _act >= 4)
             {
-                HideTip();
+                Hide();
                 return;
             }
             if (_for != hovered)
             {
                 if (CoordField?.GetValue(hovered.Point) is not MapCoord coord)
                 {
-                    HideTip();
+                    Hide();
                     return;
                 }
                 var idx = BehaviorMutations.IndexFor(_seed, coord.row, coord.col);
-                var (name, desc) = BehaviorMutations.Info(idx);
-                _title.Text = "⚠ Мутация: " + name;
-                _desc.Text = desc;
+                var (name, desc) = BehaviorMutations.Info(idx, _act < 0 ? 0 : _act);
+                _title!.Text = "⚠ Мутация: " + name;
+                _desc!.Text = desc;
                 _for = hovered;
             }
             _panel.Visible = true;
-            var pos = vp.GetMousePosition() + new Vector2(18, 14);
             var size = _panel.GetCombinedMinimumSize();
             var win = vp.GetVisibleRect().Size;
-            if (pos.X + size.X > win.X) pos.X -= size.X + 36;
-            if (pos.Y + size.Y > win.Y) pos.Y -= size.Y + 28;
+            // панель — НАД курсором, чтобы не залезать под него
+            var pos = vp.GetMousePosition() + new Vector2(16, -size.Y - 14);
+            if (pos.Y < 0) pos.Y = vp.GetMousePosition().Y + 20;   // у верхнего края — под курсор
+            if (pos.X + size.X > win.X) pos.X -= size.X + 32;
             _panel.Position = pos;
         }
 
-        void HideTip()
+        static void Hide()
         {
-            _panel.Visible = false;
+            if (_panel != null) _panel.Visible = false;
             _for = null;
         }
     }
