@@ -288,7 +288,7 @@ public static class BehaviorMutations
                         }
                     case Kind.ГниющаяАура:
                         foreach (var p in players)
-                            await CreatureCmd.LoseBlock(p, 4 + act);
+                            await CreatureCmd.LoseBlock(null!, p, 4 + act, null!);
                         break;
                     case Kind.Дезертир:
                         // отчаяние нарастает: пороги 75/50/25%, на каждом +2 силы и 1 артефакт

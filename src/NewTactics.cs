@@ -49,7 +49,7 @@ public static class NewTactics
             decimal amount = 2 + act / 2;   // 2 на 1-м акте … 6 на 10-м
             foreach (var p in combat.Players.Select(p => p.Creature).Where(c => c.IsAlive && c.Block > 0))
             {
-                await CreatureCmd.LoseBlock(p, amount);
+                await CreatureCmd.LoseBlock(null!, p, amount, null!);
                 Log.Info($"[kolya_mod] гниение: у игрока сгорело {amount} блока (акт {act + 1})");
             }
         }

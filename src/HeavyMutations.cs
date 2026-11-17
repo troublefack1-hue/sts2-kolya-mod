@@ -50,8 +50,8 @@ public static class HeavyMutations
         public bool Seen;
         public int TurnCounter;
         public int Attacks;          // зачарованный: счётчик атак по героям
-        public bool Revived;         // личинка/феникс: смертельный удар уже погашен
-        public bool ReviveApplied;   // воскрешение выдано следующим ходом
+        public int Revived;          // личинка/феникс: погашено смертельных ударов
+        public int ReviveApplied;    // воскрешения выданы (Revived — ReviveApplied = в очереди)
         public bool Charged;         // хрономан/кровавая луна: усиленная атака ждёт
         public bool Rage;            // кровавая луна: неистовство (лечится от урона)
         public decimal Banked;       // теневой контракт: недобранный урон по героям
@@ -91,11 +91,11 @@ public static class HeavyMutations
     {
         Kind3.Зеркало           => ("Зеркало", "Каждые 2 хода копирует весь блок самого защищённого героя. Возвращает 50% урона от атак по нему."),
         Kind3.Зачарованный      => ("Зачарованный", $"В начале хода +2 силы и {6 + act} блока. Каждая вторая атака по героям бьёт вдвое сильнее."),
-        Kind3.Личинка           => ("Личинка", "Один раз переживает смертельный удар: восстанавливает половину здоровья и получает +2 силы."),
+        Kind3.Личинка           => ("Личинка", "Трижды переживает смертельный удар: восстанавливает половину здоровья и получает +2 силы."),
         Kind3.Коллекционер      => ("Коллекционер", "Каждые 3 хода: 1 уязвимость и 1 слабость каждому герою, +1 силы себе."),
         Kind3.Хрономан          => ("Хрономан", $"Каждый 3-й ход получает {2 * (6 + act)} блока, а следующая атака бьёт вдвое сильнее."),
         Kind3.ПожирательЭнергии => ("Пожиратель энергии", "Каждые 2 хода герой с наибольшей энергией теряет 1 энергию следующего хода."),
-        Kind3.Феникс            => ("Феникс", "Один раз переживает смертельный удар: полностью восстанавливает здоровье и получает +2 силы."),
+        Kind3.Феникс            => ("Феникс", "Дважды переживает смертельный удар: полностью восстанавливает здоровье и получает +2 силы."),
         Kind3.КрадущийТалант    => ("Крадущий талант", "Каждые 3 хода снимает по 1 положительному эффекту с каждого героя и растёт."),
         Kind3.ТеневойДвойник    => ("Теневой двойник", "Копирует вашу силу: получает столько силы, сколько есть у всех героев вместе."),
         Kind3.Жнец              => ("Жнец", "Отмечает самого раненого героя; через 3 хода казнит его, если у того меньше четверти здоровья."),
@@ -121,7 +121,7 @@ public static class HeavyMutations
         var kind = (Kind3)index;
         var s = Of(enemy);
         s.IsBoss = false; s.KindIdx = index; s.Seen = false;
-        s.TurnCounter = 0; s.Attacks = 0; s.Revived = false; s.ReviveApplied = false;
+        s.TurnCounter = 0; s.Attacks = 0; s.Revived = 0; s.ReviveApplied = 0;
         s.Charged = false; s.Rage = false; s.Banked = 0; s.Mark = null;
         switch (kind)
         {
@@ -148,7 +148,7 @@ public static class HeavyMutations
         var kind = (BossKind)index;
         var s = Of(boss);
         s.IsBoss = true; s.KindIdx = index; s.Seen = false;
-        s.TurnCounter = 0; s.Attacks = 0; s.Revived = false; s.ReviveApplied = false;
+        s.TurnCounter = 0; s.Attacks = 0; s.Revived = 0; s.ReviveApplied = 0;
         s.Charged = false; s.Rage = false; s.Banked = 0; s.Mark = null;
         // стартовые состояния уникальных механик
         if (kind == BossKind.КроваваяЛуна) s.Rage = true;
@@ -203,14 +203,14 @@ public static class HeavyMutations
                     break;
                 case Kind3.Личинка:
                 case Kind3.Феникс:
-                    // воскрешение после погашенного смертельного удара
-                    if (s.Revived && !s.ReviveApplied)
+                    // воскрешения после погашенных смертельных ударов (личинка ×3, феникс ×2)
+                    if (s.Revived > s.ReviveApplied)
                     {
-                        s.ReviveApplied = true;
+                        s.ReviveApplied++;
                         decimal heal = kind == Kind3.Феникс ? e.MaxHp : e.MaxHp / 2m;
                         await CreatureCmd.Heal(e, heal, true);
                         await Give<StrengthPower>(e, 2);
-                        Log.Info($"[kolya_mod] {kind} {e.Monster?.Id} переродился");
+                        Log.Info($"[kolya_mod] {kind} {e.Monster?.Id} переродился ({s.ReviveApplied}/{(kind == Kind3.Феникс ? 2 : 3)})");
                     }
                     break;
                 case Kind3.Коллекционер:
@@ -361,7 +361,7 @@ public static class HeavyMutations
                         int stolen = best.Block;
                         if (stolen > 0)
                         {
-                            await CreatureCmd.LoseBlock(best, stolen);
+                            await CreatureCmd.LoseBlock(null!, best, stolen, null!);
                             await Give<StrengthPower>(e, Math.Max(1, stolen / 5));
                         }
                     }
@@ -379,13 +379,15 @@ public static class HeavyMutations
         {
             if (previewMode != CardPreviewMode.None) return;
             if (__result <= 0 || dealer == null) return;
-            // личинка/феникс: гасим первый смертельный удар — враг остаётся с 1 ОЗ
+            // личинка/феникс: гасим смертельный удар — враг остаётся с 1 ОЗ
+            // (личинка 3 перерождения, феникс 2)
             if (dealer.IsPlayer && Marked.TryGetValue(target, out var ts) && !ts.IsBoss
                 && (ts.KindIdx == (int)Kind3.Личинка || ts.KindIdx == (int)Kind3.Феникс)
-                && !ts.Revived && __result >= target.CurrentHp && target.CurrentHp > 0)
+                && ts.Revived < (ts.KindIdx == (int)Kind3.Личинка ? 3 : 2)
+                && __result >= target.CurrentHp && target.CurrentHp > 0)
             {
                 __result = target.CurrentHp - 1;
-                ts.Revived = true;
+                ts.Revived++;
                 return;
             }
             // лавина в фазе копления получает +50% урона

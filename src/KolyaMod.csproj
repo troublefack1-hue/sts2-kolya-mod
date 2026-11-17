@@ -3,8 +3,8 @@
     <TargetFramework>net9.0</TargetFramework>
     <AssemblyName>kolya_mod</AssemblyName>
     <Nullable>enable</Nullable>
-    <GameData>E:\Steam\steamapps\common\Slay the Spire 2\data_sts2_windows_x86_64</GameData>
-    <ModDir>E:\Steam\steamapps\common\Slay the Spire 2\mods\kolya_mod</ModDir>
+    <GameData>E:\SteamLibrary\steamapps\common\Slay the Spire 2\data_sts2_windows_x86_64</GameData>
+    <ModDir>E:\SteamLibrary\steamapps\common\Slay the Spire 2\mods\kolya_mod</ModDir>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="sts2"><HintPath>$(GameData)\sts2.dll</HintPath><Private>false</Private></Reference>

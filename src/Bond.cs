@@ -57,7 +57,7 @@ public static class Bond
                 var each = decimal.Floor(share / minions.Count);
                 if (each <= 0m) continue;
                 Log.Info($"[kolya_mod] связка: {owner.Monster?.Id} передал {share} урона {minions.Count} приспешникам по {each}");
-                await CreatureCmd.Damage(ctx, minions, each, ValueProp.Unblockable | ValueProp.Unpowered, null, null);
+                await CreatureCmd.Damage(ctx, minions, each, ValueProp.Unblockable | ValueProp.Unpowered, null!);
             }
             return results;
         }

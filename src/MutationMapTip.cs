@@ -30,7 +30,7 @@ public static class MutationMapTip
             _act = runState.CurrentActIndex;
             // сид берём ТОЛЬКО отсюда: SetMap получает сид карты, который может отличаться
             // от сида забега, — тогда хэш подсказки и хэш боя разъезжаются
-            _seed = runState.Rng.Seed;
+            _seed = (uint)runState.Rng.Seed;
         }
     }
 

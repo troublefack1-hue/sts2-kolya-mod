@@ -10,7 +10,8 @@ public static class ModEntry
 {
     public static void Init()
     {
-        KolyaSavedFields.Register();
+        // KolyaSavedFields регистрируется постфиксом ModelIdSerializationCache.Init
+        // (см. NetSafety.cs) — кэш к этому моменту ещё не инициализирован.
         // Патчим каждый класс отдельно: падение одного транспилера не должно отключать весь мод.
         var harmony = new Harmony("kolya.kolya_mod");
         foreach (var type in AccessTools.GetTypesFromAssembly(typeof(ModEntry).Assembly))

@@ -139,17 +139,17 @@ public static class Mutations
                     int row = coord?.row ?? rng.NextInt(1000), col = coord?.col ?? rng.NextInt(1000);
                     if (bossFight && act >= 3)
                     {
-                        idx = HeavyMutations.IndexForBoss(runState.Rng.Seed, row, col);
+                        idx = HeavyMutations.IndexForBoss((uint)runState.Rng.Seed, row, col);
                         var name = await HeavyMutations.ApplyBoss(idx, enemy, act);
                         MutatedEnemies.Add(enemy);
                         Log.Info($"[kolya_mod] босс-мутация {name} на {enemy.Monster?.Id} (акт {act + 1})");
                         continue;
                     }
-                    idx = BehaviorMutations.IndexFor(runState.Rng.Seed, row, col);
+                    idx = BehaviorMutations.IndexFor((uint)runState.Rng.Seed, row, col);
                     if (act >= 5)
                     {
                         var name3 = await HeavyMutations.Apply3(
-                            HeavyMutations.IndexFor3(runState.Rng.Seed, row, col), enemy, act);
+                            HeavyMutations.IndexFor3((uint)runState.Rng.Seed, row, col), enemy, act);
                         MutatedEnemies.Add(enemy);
                         Log.Info($"[kolya_mod] поведенческая мутация III {name3} на элитку {enemy.Monster?.Id} (акт {act + 1})");
                         continue;
