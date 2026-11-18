@@ -63,14 +63,26 @@ public sealed class MergeRestSiteOption : RestSiteOption
             c => c != first)).FirstOrDefault();
         if (second == null) return false;
 
+        // число повторов второй карты (Меч-бумеранг и т.п. — «3 урона, 3 раза»): его суммарный
+        // эффект = стат × повторы, поэтому урон/блок/исцеление переносим ПОВТОРЕННЫМИ
+        decimal repeats = 1;
+        foreach (var kv in second.DynamicVars)
+            if (kv.Value.GetType() == typeof(RepeatVar) && kv.Value.BaseValue > 0)
+                repeats = kv.Value.BaseValue;
+
         // все числовые параметры второй прибавляются к первой (по типам)
         var moved = new List<string>();
         foreach (var kv in second.DynamicVars)
         {
-            var target = first.DynamicVars.FirstOrDefault(o => SameKind(o.Value.GetType(), kv.Value.GetType())).Value;
+            var t = kv.Value.GetType();
+            if (t == typeof(RepeatVar)) continue; // повторы — множитель, не переносим как стат
+            var target = first.DynamicVars.FirstOrDefault(o => SameKind(o.Value.GetType(), t)).Value;
             if (target == null) continue;
-            target.UpgradeValueBy(kv.Value.BaseValue);
-            moved.Add($"{kv.Value.Name}+{kv.Value.BaseValue:0.#}→{target.Name}");
+            // у повторяемых эффектов переносим суммарный результат (3 по 3 → +9)
+            bool repeated = repeats > 1 && (t == typeof(DamageVar) || t == typeof(BlockVar) || t == typeof(HealVar));
+            var amount = kv.Value.BaseValue * (repeated ? repeats : 1);
+            target.UpgradeValueBy(amount);
+            moved.Add($"{kv.Value.Name}+{amount:0.#}{(repeated ? $" (×{repeats})" : "")}→{target.Name}");
         }
 
         // все зачарования второй переходят на первую; одинаковые складываются по силе
@@ -80,11 +92,13 @@ public sealed class MergeRestSiteOption : RestSiteOption
             if (copy.CanEnchant(first)) CardCmd.Enchant(copy, first, e.Amount);
         }
 
-        // цена = ценаА + ценаБ + 1 (минимум 1, даже за две бесплатные)
+        // цена = ценаА + ценаБ + 1 (минимум 1, даже за две бесплатные).
+        // UpgradeBy меняет только ожидающую прибавку (Canonical её не видит), поэтому
+        // ставим кастомную базовую цену — как после кузнечного улучшения.
         if (!first.EnergyCost.CostsX)
         {
-            int add = (second.EnergyCost.CostsX ? 0 : second.EnergyCost.Canonical) + 1;
-            if (add != 0) first.EnergyCost.UpgradeBy(add);
+            int cost = first.EnergyCost.Canonical + (second.EnergyCost.CostsX ? 0 : second.EnergyCost.Canonical) + 1;
+            first.EnergyCost.SetCustomBaseCost(cost);
         }
 
         await CardPileCmd.RemoveFromDeck(second);
