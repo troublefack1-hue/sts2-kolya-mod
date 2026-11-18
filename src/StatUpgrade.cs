@@ -71,6 +71,23 @@ public static class StatUpgrade
             }
             return;
         }
+        // слитые у костра (Merge) карты: каждый свой стат растёт отдельно, а не один выбранный —
+        // Коля: «каждый из параметров после слияния будет улучшаться отдельно»
+        if (MergedCards.Is(card))
+        {
+            if (card.CurrentUpgradeLevel % 2 != 0) return;
+            foreach (var kv in card.DynamicVars)
+            {
+                var v = kv.Value; var t = v.GetType();
+                if (t == typeof(EnergyVar)) continue; // энергия — только ванильным апгрейдом, до StatCap
+                bool isStat = t == typeof(DamageVar) || t == typeof(BlockVar) || t == typeof(HealVar)
+                    || (t.IsGenericType && t.GetGenericTypeDefinition() == typeof(PowerVar<>));
+                if (!isStat || StatCap.IsCapped(v)) continue;
+                v.UpgradeValueBy(Amount);
+                Log.Info($"[kolya_mod] слитая карта: {card.Id} +{Amount} к {v.Name} (уровень {card.CurrentUpgradeLevel})");
+            }
+            return;
+        }
         // ванильное улучшение само что-то изменило? значит карта уже растёт — не дублируем прибавку
         foreach (var kv in card.DynamicVars)
             if (__state.TryGetValue(kv.Key, out var before) && kv.Value.BaseValue != before) return;

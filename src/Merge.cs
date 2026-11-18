@@ -15,6 +15,7 @@ using MegaCrit.Sts2.Core.Logging;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Nodes.CommonUi;
 using MegaCrit.Sts2.Core.Runs;
+using MegaCrit.Sts2.Core.Saves.Runs;
 
 namespace KolyaMod;
 
@@ -102,8 +103,43 @@ public sealed class MergeRestSiteOption : RestSiteOption
         }
 
         await CardPileCmd.RemoveFromDeck(second);
+        MergedCards.Mark(first);
         Log.Info($"[kolya_mod] слияние разных: {first.Id} + {second.Id}: параметры [{string.Join(", ", moved)}], цена {first.EnergyCost.Canonical}, зачарования: {string.Join(", ", MultiEnchant.All(first).Select(e => $"{e.Id.Entry} {e.Amount}"))}");
         return true;
+    }
+}
+
+// Пометка «служебно слитая карта»: в забеге — множество ссылок, в сейве — строка в свойствах
+// карты (тот же механизм, что у MultiEnchant). Слитая карта при улучшении растит КАЖДЫЙ
+// свой стат отдельно (StatUpgrade), а не один выбранный.
+public static class MergedCards
+{
+    public const string SaveKey = "KolyaMerged";
+    static readonly HashSet<CardModel> Set = new();
+
+    public static bool Is(CardModel card) => Set.Contains(card);
+    public static void Mark(CardModel card) => Set.Add(card);
+
+    [HarmonyPatch(typeof(CardModel), nameof(CardModel.ToSerializable))]
+    static class Save
+    {
+        static void Postfix(CardModel __instance, SerializableCard __result)
+        {
+            if (!Set.Contains(__instance)) return;
+            __result.Props ??= new SavedProperties();
+            __result.Props.strings ??= new List<SavedProperties.SavedProperty<string>>();
+            __result.Props.strings.Add(new SavedProperties.SavedProperty<string>(SaveKey, "1"));
+        }
+    }
+
+    [HarmonyPatch(typeof(CardModel), nameof(CardModel.FromSerializable))]
+    static class Load
+    {
+        static void Postfix(SerializableCard save, CardModel __result)
+        {
+            var v = save.Props?.strings?.FirstOrDefault(s => s.name == SaveKey).value;
+            if (v == "1") Set.Add(__result);
+        }
     }
 }
 
