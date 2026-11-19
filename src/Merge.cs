@@ -55,13 +55,14 @@ public sealed class MergeRestSiteOption : RestSiteOption
     public override async Task<bool> OnSelect()
     {
         var deck = Owner.Deck.Cards;
+        // карты со стоимостью X из слияния исключены: у них цены по сути нет (0.3.45)
         var first = (await CardSelectCmd.FromDeckGeneric(Owner,
             new CardSelectorPrefs(new LocString("rest_site_ui", "KOLYA_MERGE_PROMPT_1"), 1) { Cancelable = true },
-            _ => true)).FirstOrDefault();
+            c => !c.EnergyCost.CostsX)).FirstOrDefault();
         if (first == null) return false;
         var second = (await CardSelectCmd.FromDeckGeneric(Owner,
             new CardSelectorPrefs(new LocString("rest_site_ui", "KOLYA_MERGE_PROMPT_2"), 1) { Cancelable = true },
-            c => c != first)).FirstOrDefault();
+            c => c != first && !c.EnergyCost.CostsX)).FirstOrDefault();
         if (second == null) return false;
 
         // число повторов второй карты (Меч-бумеранг и т.п. — «3 урона, 3 раза»): его суммарный

@@ -13,6 +13,6 @@
   </ItemGroup>
   <Target Name="CopyToGame" AfterTargets="Build">
     <MakeDir Directories="$(ModDir)" />
-    <Copy SourceFiles="$(TargetPath);kolya_mod.json;option_fuse.png;option_merge.png" DestinationFolder="$(ModDir)" />
+    <Copy SourceFiles="$(TargetPath);kolya_mod.json;option_fuse.png;option_merge.png;option_costdown.png" DestinationFolder="$(ModDir)" />
   </Target>
 </Project>
