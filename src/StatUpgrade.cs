@@ -75,6 +75,15 @@ public static class StatUpgrade
         // Коля: «каждый из параметров после слияния будет улучшаться отдельно»
         if (MergedCards.Is(card))
         {
+            // Вторая половина — полноценная сохранённая карта: её собственные уровни и
+            // ванильные прибавки растут отдельно от основы. Вложенные слияния обрабатываются
+            // этим же патчем рекурсивно по конечной цепочке.
+            var second = MergedCards.Second(card);
+            if (second != null && second.IsUpgradable)
+            {
+                second.UpgradeInternal();
+                second.FinalizeUpgradeInternal();
+            }
             if (card.CurrentUpgradeLevel % 2 != 0) return;
             foreach (var kv in card.DynamicVars)
             {
