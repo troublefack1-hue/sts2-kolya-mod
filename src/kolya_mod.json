@@ -3,7 +3,7 @@
   "name": "Emberforge",
   "author": "kolya",
   "description": "Глубокая прокачка карт: улучшения без потолка, слияние и зачарование карт, передача карт в кооперативе, библиотека мутаций элит и боссов.",
-  "version": "0.3.44",
+  "version": "0.3.45",
   "has_dll": true,
   "has_pck": false,
   "affects_gameplay": true,
