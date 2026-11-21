@@ -34,7 +34,9 @@ public sealed class MergeRestSiteOption : RestSiteOption
     public override LocString Description => new("rest_site_ui",
         "OPTION_" + Id + (IsEnabled ? ".description" : ".descriptionDisabled"));
 
-    public override bool IsEnabled => Owner.Deck.Cards.Count >= 2;
+    bool _used;
+
+    public override bool IsEnabled => !_used && Owner.Deck.Cards.Count >= 2;
 
     public MergeRestSiteOption(Player owner) : base(owner) { }
 
@@ -55,11 +57,13 @@ public sealed class MergeRestSiteOption : RestSiteOption
             if (copy.CanEnchant(first)) CardCmd.Enchant(copy, first, e.Amount);
         }
 
-        int cost = first.EnergyCost.Canonical + second.EnergyCost.Canonical + 1;
+        int cost = first.EnergyCost.GetResolved() + second.EnergyCost.GetResolved() + 1;
         first.EnergyCost.SetCustomBaseCost(cost);
+        first.EnergyCost.FinalizeUpgrade();
 
         await CardPileCmd.RemoveFromDeck(second);
         MergedCards.Mark(first, second);
+        _used = true;
         Log.Info($"[kolya_mod] слияние разных: {first.Id} затем {second.Id}, цена {first.EnergyCost.Canonical}, зачарования: {string.Join(", ", MultiEnchant.All(first).Select(e => $"{e.Id.Entry} {e.Amount}"))}");
         return true;
     }

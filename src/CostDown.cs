@@ -32,7 +32,9 @@ public sealed class CostDownRestSiteOption : RestSiteOption
     public override LocString Description => new("rest_site_ui",
         "OPTION_" + Id + (IsEnabled ? ".description" : ".descriptionDisabled"));
 
-    static bool Fits(CardModel c) => !c.EnergyCost.CostsX && c.EnergyCost.Canonical >= 2;
+    // GetResolved учитывает кастомную базовую цену слитой карты. Canonical у старых
+    // слитых карт мог остаться равным цене первой половины и не пропускал их в список.
+    static bool Fits(CardModel c) => !c.EnergyCost.CostsX && c.EnergyCost.GetResolved() >= 2;
 
     public override bool IsEnabled =>
         Owner.Creature.CurrentHp > HpCost && Owner.Deck.Cards.Any(Fits);
@@ -42,13 +44,16 @@ public sealed class CostDownRestSiteOption : RestSiteOption
     public override async Task<bool> OnSelect()
     {
         var deck = Owner.Deck.Cards;
+        // Не открываем пустой сетевой выбор: игра иначе автоматически завершает костёр.
+        if (!deck.Any(Fits)) return false;
         var card = (await CardSelectCmd.FromDeckGeneric(Owner,
             new CardSelectorPrefs(new LocString("rest_site_ui", "KOLYA_COSTDOWN_PROMPT"), 1) { Cancelable = true },
             Fits)).FirstOrDefault();
         if (card == null) return false;
 
-        int cost = card.EnergyCost.Canonical - 1; // не ниже 1: Fits пропускает только карты от 2
+        int cost = card.EnergyCost.GetResolved() - 1; // не ниже 1: Fits пропускает только карты от 2
         card.EnergyCost.SetCustomBaseCost(cost);
+        card.EnergyCost.FinalizeUpgrade();
         CreatureCmd.SetCurrentHp(Owner.Creature, Owner.Creature.CurrentHp - HpCost);
         Log.Info($"[kolya_mod] снижение стоимости: {card.Id} → {cost} за {HpCost} ХП (осталось {Owner.Creature.CurrentHp})");
         return true;
