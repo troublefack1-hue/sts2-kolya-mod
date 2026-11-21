@@ -136,6 +136,8 @@ public static class FuseText
         ["KOLYA_ENCHANT_REWARD_PROMPT"] = "Трофей мутации: выберите карту — она получит случайное безопасное зачарование. Можно отменить и вернуться к наградам.",
     };
 
+    public static void SetDynamic(string key, string value) => Text[key] = value;
+
     [HarmonyPrefix, HarmonyPatch(nameof(LocTable.GetRawText))]
     static bool Raw(string key, ref string __result) => !Text.TryGetValue(key, out __result!);
 

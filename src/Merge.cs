@@ -58,8 +58,7 @@ public sealed class MergeRestSiteOption : RestSiteOption
         }
 
         int cost = first.EnergyCost.GetResolved() + second.EnergyCost.GetResolved() + 1;
-        first.EnergyCost.SetCustomBaseCost(cost);
-        first.EnergyCost.FinalizeUpgrade();
+        CustomCardCosts.Set(first, cost);
 
         await CardPileCmd.RemoveFromDeck(second);
         MergedCards.Mark(first, second);
@@ -141,15 +140,19 @@ public static class MergedCards
         Parts[clone] = secondClone;
     }
 
-    // На самой карте показываем оба актуальных описания в порядке срабатывания.
-    // Description второй карты сам подставляет её текущие улучшенные значения и повторы.
+    // Description — LocString. Создаём динамическую запись локализации с уже
+    // отформатированными значениями обеих карт, включая переменные второй карты.
     [HarmonyPatch(typeof(CardModel), nameof(CardModel.Description), MethodType.Getter)]
     static class CombinedDescription
     {
-        static void Postfix(CardModel __instance, ref string __result)
+        static void Postfix(CardModel __instance, ref LocString __result)
         {
             var second = Second(__instance);
-            if (second != null) __result += "\n\n" + second.Description;
+            if (second == null) return;
+            string text = __result.GetFormattedText() + "\n\n" + second.Description.GetFormattedText();
+            string key = "KOLYA_MERGED_CARD_" + System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(__instance);
+            FuseText.SetDynamic(key, text);
+            __result = new LocString("rest_site_ui", key);
         }
     }
 
@@ -172,14 +175,12 @@ public static class MergedCards
         {
             if (!Parts.TryGetValue(__instance, out var second)) return;
             __result.Props ??= new SavedProperties();
-            if (second == null)
-            {
-                __result.Props.strings ??= new List<SavedProperties.SavedProperty<string>>();
-                __result.Props.strings.Add(new SavedProperties.SavedProperty<string>(SaveKey, "1"));
-                return;
-            }
-            __result.Props.cards ??= new List<SavedProperties.SavedProperty<SerializableCard>>();
-            __result.Props.cards.Add(new SavedProperties.SavedProperty<SerializableCard>(SaveKey, second.ToSerializable()));
+            __result.Props.strings ??= new List<SavedProperties.SavedProperty<string>>();
+            // Строковое поле поддерживается и файловыми сейвами, и сетевой синхронизацией.
+            // Игровой сериализатор сохраняет Id, уровни, зачарования и наши вложенные Props.
+            string data = second == null ? "1" : System.Text.Json.JsonSerializer.Serialize(second.ToSerializable(),
+                MegaCrit.Sts2.Core.Saves.JsonSerializationUtility.Options);
+            __result.Props.strings.Add(new SavedProperties.SavedProperty<string>(SaveKey, data));
         }
     }
 
@@ -188,6 +189,7 @@ public static class MergedCards
     {
         static void Postfix(SerializableCard save, CardModel __result)
         {
+            // Совместимость с короткоживущей версией, которая писала вложенный cards.
             var embedded = save.Props?.cards?.FirstOrDefault(s => s.name == SaveKey).value;
             if (embedded != null)
             {
@@ -196,8 +198,33 @@ public static class MergedCards
                 Parts[__result] = second;
                 return;
             }
-            var legacy = save.Props?.strings?.FirstOrDefault(s => s.name == SaveKey).value;
-            if (legacy == "1") Parts[__result] = null;
+            var data = save.Props?.strings?.FirstOrDefault(s => s.name == SaveKey).value;
+            if (string.IsNullOrEmpty(data)) return;
+            if (data == "1")
+            {
+                Parts[__result] = null;
+                return;
+            }
+            SerializableCard? restored;
+            try
+            {
+                restored = System.Text.Json.JsonSerializer.Deserialize<SerializableCard>(data,
+                    MegaCrit.Sts2.Core.Saves.JsonSerializationUtility.Options);
+            }
+            catch (System.Exception e)
+            {
+                Log.Error($"[kolya_mod] не удалось восстановить вторую карту слияния: {e.Message}");
+                Parts[__result] = null;
+                return;
+            }
+            if (restored == null)
+            {
+                Parts[__result] = null;
+                return;
+            }
+            var card = CardModel.FromSerializable(restored);
+            card.Owner = __result.Owner;
+            Parts[__result] = card;
         }
     }
 }

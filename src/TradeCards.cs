@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -86,36 +87,44 @@ public class TradeRestSiteOption : RestSiteOption
         var mine = myPick.FirstOrDefault();
         if (mine == null) return false; // отмена — костёр не тратится
 
-        // только авторитет владельца удаляет карту из своей колоды
-        if (LocalContext.IsMine(mine))
+        // Явная регистрация предложения. Обычные удаления/замены карт (улучшение,
+        // слияние, события) больше не воспринимаются как предложение передачи.
+        var offer = new CardSnap(mine.Id, mine.CurrentUpgradeLevel);
+        TradeOffers.BeginOffer(Owner, target, offer);
+        try
         {
-            await CardPileCmd.RemoveFromDeck(mine, false);
-            Log.Info($"[kolya_mod] передача: {Owner.NetId} предложил {mine.Id} (+{mine.CurrentUpgradeLevel}) для {target.NetId}");
-        }
-
-        // ждём: получатель кладёт копию в свою колоду (у себя он IsMine — сработает)
-        var before = Snap(target.Deck);
-        var deadline = DateTime.UtcNow.AddSeconds(WaitSeconds);
-        while (DateTime.UtcNow < deadline)
-        {
-            await Task.Delay(500);
-            if (Appeared(Snap(target.Deck), before, mine.Id))
+            // только авторитет владельца удаляет карту из своей колоды
+            if (LocalContext.IsMine(mine))
             {
-                Log.Info($"[kolya_mod] передача: {target.NetId} принял {mine.Id}");
-                return true; // костёр истрачен
+                await CardPileCmd.RemoveFromDeck(mine, false);
+                Log.Info($"[kolya_mod] передача: {Owner.NetId} предложил {mine.Id} (+{mine.CurrentUpgradeLevel}) для {target.NetId}");
             }
-        }
 
-        // таймаут: не ответил — возвращаем карту (только владелец, IsMine-гейт)
-        if (LocalContext.IsMine(mine))
-        {
-            if (!Appeared(Snap(target.Deck), before, mine.Id))
+            // ждём: получатель кладёт копию в свою колоду (у себя он IsMine — сработает)
+            var before = Snap(target.Deck);
+            var deadline = DateTime.UtcNow.AddSeconds(WaitSeconds);
+            while (DateTime.UtcNow < deadline)
+            {
+                await Task.Delay(500);
+                if (Appeared(Snap(target.Deck), before, mine.Id))
+                {
+                    Log.Info($"[kolya_mod] передача: {target.NetId} принял {mine.Id}");
+                    return true; // костёр истрачен
+                }
+            }
+
+            // таймаут: не ответил — возвращаем карту (только владелец, IsMine-гейт)
+            if (LocalContext.IsMine(mine) && !Appeared(Snap(target.Deck), before, mine.Id))
             {
                 await GiveCopyTo(mine.Id, mine.CurrentUpgradeLevel, Owner);
                 Log.Info($"[kolya_mod] передача: {target.NetId} не ответил, {Owner.NetId} вернул {mine.Id}");
             }
+            return false;
         }
-        return false;
+        finally
+        {
+            TradeOffers.CompleteOffer(Owner, target);
+        }
     }
 
     // карта в снимке колоды
@@ -166,13 +175,16 @@ static class LocStringExt
     }
 }
 
-// Фоновое наблюдение за колодами напарников: обнаружение предложений передачи
-// и показ окна принятия. Локально на каждой машине; UI — через CallDeferred.
+// Фоновый наблюдатель только за явно зарегистрированными предложениями передачи.
+// Изменения колоды сами по себе предложением не считаются.
 public static class TradeOffers
 {
+    readonly record struct OfferKey(ulong From, ulong To);
+    sealed record PendingOffer(Player From, Player To, TradeRestSiteOption.CardSnap Card, DateTime CreatedAt);
+
     static System.Threading.Timer? _timer;
     static Player? _me; // последний локальный игрок у костра
-    static readonly Dictionary<ulong, List<TradeRestSiteOption.CardSnap>> _snaps = new();
+    static readonly ConcurrentDictionary<OfferKey, PendingOffer> _pending = new();
     static bool _busy; // окно предложения открыто
 
     public static void Ensure(Player me)
@@ -181,34 +193,34 @@ public static class TradeOffers
         _timer ??= new System.Threading.Timer(_ => Tick(), null, 1500, 500);
     }
 
+    internal static void BeginOffer(Player from, Player to, TradeRestSiteOption.CardSnap card)
+    {
+        _pending[new OfferKey(from.NetId, to.NetId)] = new PendingOffer(from, to, card, DateTime.UtcNow);
+    }
+
+    public static void CompleteOffer(Player from, Player to)
+    {
+        _pending.TryRemove(new OfferKey(from.NetId, to.NetId), out _);
+    }
+
     public static void Tick()
     {
         try
         {
             var me = _me;
-            if (me == null || !RunManager.Instance.IsInProgress) { _snaps.Clear(); return; }
-            var players = me.RunState.Players.ToList();
-            if (players.Count < 2) { _snaps.Clear(); return; }
-            ulong myId = me.NetId;
+            if (me == null || !RunManager.Instance.IsInProgress) { _pending.Clear(); return; }
 
-            foreach (var p in players)
+            var cutoff = DateTime.UtcNow.AddSeconds(-60);
+            foreach (var expired in _pending.Where(kv => kv.Value.CreatedAt < cutoff).Select(kv => kv.Key).ToList())
+                _pending.TryRemove(expired, out _);
+
+            if (_busy) return;
+            foreach (var kv in _pending.Where(kv => kv.Value.To.NetId == me.NetId).ToList())
             {
-                if (p.NetId == myId) continue;
-                var now = TradeRestSiteOption.Snap(p.Deck);
-                if (!_snaps.TryGetValue(p.NetId, out var before))
-                {
-                    _snaps[p.NetId] = now;
-                    continue;
-                }
-                var gone = TradeRestSiteOption.Missing(now, before);
-                _snaps[p.NetId] = now;
-                if (gone.HasValue && !_busy)
-                {
-                    _busy = true;
-                    var from = p;
-                    var offer = gone.Value;
-                    OnMainThread(() => ShowOffer(from, offer));
-                }
+                if (!_pending.TryRemove(kv.Key, out var pending)) continue;
+                _busy = true;
+                OnMainThread(() => ShowOffer(pending.From, pending.Card));
+                break;
             }
         }
         catch (Exception e)

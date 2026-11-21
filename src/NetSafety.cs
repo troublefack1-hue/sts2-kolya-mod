@@ -14,6 +14,13 @@ public class KolyaSavedFields
     [SavedProperty]
     public string KolyaExtraEnchantments { get; set; } = "";
 
+    // Вложенная вторая карта слияния и постоянная кастомная базовая цена.
+    [SavedProperty]
+    public string KolyaMerged { get; set; } = "";
+
+    [SavedProperty]
+    public int KolyaCustomCost { get; set; }
+
     // Уровни улучшения реликвий (RelicUpgrade). Без регистрации имени сеть не может
     // сопоставить SavedProperty net ID — синхронизация игрока падает, комната не грузится
     // (тёмный экран при входе в бой с улучшенными реликвиями в коопе).

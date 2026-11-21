@@ -52,8 +52,7 @@ public sealed class CostDownRestSiteOption : RestSiteOption
         if (card == null) return false;
 
         int cost = card.EnergyCost.GetResolved() - 1; // не ниже 1: Fits пропускает только карты от 2
-        card.EnergyCost.SetCustomBaseCost(cost);
-        card.EnergyCost.FinalizeUpgrade();
+        CustomCardCosts.Set(card, cost);
         CreatureCmd.SetCurrentHp(Owner.Creature, Owner.Creature.CurrentHp - HpCost);
         Log.Info($"[kolya_mod] снижение стоимости: {card.Id} → {cost} за {HpCost} ХП (осталось {Owner.Creature.CurrentHp})");
         return true;
