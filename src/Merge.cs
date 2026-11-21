@@ -137,6 +137,18 @@ public static class MergedCards
         Parts[clone] = secondClone;
     }
 
+    // На самой карте показываем оба актуальных описания в порядке срабатывания.
+    // Description второй карты сам подставляет её текущие улучшенные значения и повторы.
+    [HarmonyPatch(typeof(CardModel), nameof(CardModel.Description), MethodType.Getter)]
+    static class CombinedDescription
+    {
+        static void Postfix(CardModel __instance, ref string __result)
+        {
+            var second = Second(__instance);
+            if (second != null) __result += "\n\n" + second.Description;
+        }
+    }
+
     [HarmonyPatch(typeof(CardModel), nameof(CardModel.CreateClone))]
     static class Clone
     {
