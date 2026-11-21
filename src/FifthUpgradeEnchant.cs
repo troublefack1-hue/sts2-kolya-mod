@@ -55,8 +55,13 @@ public static class FifthUpgradeEnchant
     {
         var options = Options(card);
         if (options.Count == 0) return null;
-        // игровой генератор забега: у всех игроков совместной игры выпадет одно и то же
-        var pick = options[card.Owner.RunState.Rng.Niche.NextInt(options.Count)];
+        // Детерминированный выбор без расходования общего RNG забега. CardCmd.Upgrade
+        // для чужой карты вызывается не на каждом клиенте: расход Niche здесь приводил
+        // к StateDivergence и разрыву коопа при выходе из комнаты.
+        var key = $"{card.Owner.RunState.Rng.Seed}|{card.Owner.NetId}|{card.Id.Category}|{card.Id.Entry}";
+        var hash = System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(key));
+        int index = (int)(BitConverter.ToUInt32(hash, 0) % (uint)options.Count);
+        var pick = options[index];
         CardCmd.Enchant(pick.ToMutable(), card, 1m);
         return pick;
     }
