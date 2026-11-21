@@ -1,8 +1,8 @@
 {
   "id": "kolya_mod",
-  "name": "Kolya Mod",
+  "name": "Emberforge",
   "author": "kolya",
-  "description": "Заготовка мода.",
+  "description": "Глубокая прокачка карт: улучшения без потолка, слияние и зачарование карт, передача карт в кооперативе, библиотека мутаций элит и боссов.",
   "version": "0.3.44",
   "has_dll": true,
   "has_pck": false,

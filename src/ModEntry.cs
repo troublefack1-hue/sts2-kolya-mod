@@ -25,6 +25,14 @@ public static class ModEntry
                 Log.Error($"[kolya_mod] не удалось применить патчи из {type.Name}: {e.GetType().Name}: {e.Message}");
             }
         }
+        try
+        {
+            MergedCards.PatchCardPlays(harmony);
+        }
+        catch (Exception e)
+        {
+            Log.Error($"[kolya_mod] не удалось подключить розыгрыш слитых карт: {e}");
+        }
         Log.Info("[kolya_mod] загружен");
     }
 }
