@@ -53,6 +53,9 @@ public static class FifthUpgradeEnchant
     // Случайное безопасное зачарование силы 1, которого на карте ещё нет.
     public static EnchantmentModel? GiveRandom(CardModel card)
     {
+        // При загрузке/сетевой синхронизации UpgradeInternal выполняется до назначения
+        // владельца. Зачарование уже есть в сохранении — повторно выдавать его нельзя.
+        if (card.Owner?.RunState == null) return null;
         var options = Options(card);
         if (options.Count == 0) return null;
         // Детерминированный выбор без расходования общего RNG забега. CardCmd.Upgrade
