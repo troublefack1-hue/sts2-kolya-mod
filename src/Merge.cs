@@ -80,7 +80,8 @@ public static class MergedCards
 
     public static void Mark(CardModel first, CardModel second)
     {
-        second.Owner = first.Owner;
+        // У обеих выбранных карт уже один и тот же владелец. Owner нельзя назначать
+        // повторно: игра выбрасывает "Card ... already has an owner".
         Parts[first] = second;
     }
 
@@ -111,7 +112,6 @@ public static class MergedCards
         MegaCrit.Sts2.Core.Entities.Cards.CardPlay firstPlayData)
     {
         await firstPlay;
-        second.Owner = firstPlayData.Player;
         var secondPlay = new MegaCrit.Sts2.Core.Entities.Cards.CardPlay
         {
             Card = second,
@@ -136,7 +136,6 @@ public static class MergedCards
             return;
         }
         var secondClone = second.CreateClone();
-        secondClone.Owner = clone.Owner;
         Parts[clone] = secondClone;
     }
 
@@ -194,7 +193,6 @@ public static class MergedCards
             if (embedded != null)
             {
                 var second = CardModel.FromSerializable(embedded);
-                second.Owner = __result.Owner;
                 Parts[__result] = second;
                 return;
             }
@@ -223,7 +221,6 @@ public static class MergedCards
                 return;
             }
             var card = CardModel.FromSerializable(restored);
-            card.Owner = __result.Owner;
             Parts[__result] = card;
         }
     }

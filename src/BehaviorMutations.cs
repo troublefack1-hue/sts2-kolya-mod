@@ -445,11 +445,11 @@ public static class BehaviorMutations
     [HarmonyPatch(typeof(Hook), nameof(Hook.ModifyDamage))]
     static class BoneArmor
     {
-        static void Postfix(ref decimal __result, Creature target, Creature? dealer,
+        static void Postfix(ref decimal __result, Creature? target, Creature? dealer,
             MegaCrit.Sts2.Core.Entities.Cards.CardPreviewMode previewMode)
         {
             if (previewMode != CardPreviewMode.None) return;
-            if (dealer == null || __result <= 0) return;
+            if (target == null || dealer == null || __result <= 0) return;
             if (dealer.IsPlayer && Marked.TryGetValue(target, out var s))
             {
                 if (s.Type == Kind.КостянаяБроня && s.ArmorLeft > 0)
