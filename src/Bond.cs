@@ -39,7 +39,7 @@ public static class Bond
     }
 
     [HarmonyPatch(typeof(CreatureCmd), nameof(CreatureCmd.Damage),
-        typeof(PlayerChoiceContext), typeof(IEnumerable<Creature>), typeof(decimal), typeof(ValueProp), typeof(Creature), typeof(CardModel))]
+        typeof(PlayerChoiceContext), typeof(IEnumerable<Creature>), typeof(decimal), typeof(ValueProp), typeof(Creature))]
     static class Flush
     {
         static void Postfix(PlayerChoiceContext choiceContext, ref Task<IEnumerable<DamageResult>> __result) =>

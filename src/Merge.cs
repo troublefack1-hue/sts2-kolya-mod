@@ -6,6 +6,8 @@ using Godot;
 using HarmonyLib;
 using MegaCrit.Sts2.Core.CardSelection;
 using MegaCrit.Sts2.Core.Commands;
+using MegaCrit.Sts2.Core.Entities.Cards;
+using MegaCrit.Sts2.Core.Entities.Creatures;
 using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.Entities.RestSite;
 using MegaCrit.Sts2.Core.Hooks;
@@ -74,6 +76,7 @@ public static class MergedCards
 {
     public const string SaveKey = "KolyaMerged";
     static readonly Dictionary<CardModel, CardModel?> Parts = new();
+    static readonly Dictionary<CardModel, MegaCrit.Sts2.Core.Entities.Cards.CardPlay> PlayData = new();
 
     public static bool Is(CardModel card) => Parts.ContainsKey(card);
     public static CardModel? Second(CardModel card) => Parts.TryGetValue(card, out var second) ? second : null;
@@ -85,26 +88,47 @@ public static class MergedCards
         Parts[first] = second;
     }
 
-    // OnPlay переопределяется каждой картой, поэтому патчим реальные переопределения,
-    // а не только базовый CardModel.OnPlay (его виртуальные вызовы обходят базовое тело).
+    // OnPlay и TargetType переопределяются картами, поэтому патчим реальные переопределения,
+    // а не только базовый CardModel (его виртуальные вызовы обходят базовое тело).
     public static void PatchCardPlays(Harmony harmony)
     {
+        const System.Reflection.BindingFlags flags = System.Reflection.BindingFlags.Instance |
+            System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.DeclaredOnly;
         foreach (var type in AccessTools.GetTypesFromAssembly(typeof(CardModel).Assembly))
         {
             if (!typeof(CardModel).IsAssignableFrom(type)) continue;
-            var method = type.GetMethod("OnPlay",
-                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.DeclaredOnly);
-            if (method == null || method.IsAbstract) continue;
-            harmony.Patch(method, postfix: new HarmonyMethod(typeof(MergedCards), nameof(AfterPlay)));
+            var onPlay = type.GetMethod("OnPlay", flags);
+            if (onPlay != null && !onPlay.IsAbstract)
+                harmony.Patch(onPlay, prefix: new HarmonyMethod(typeof(MergedCards), nameof(CapturePlay)));
+            var targetGetter = type.GetProperty("TargetType", flags)?.GetGetMethod(true);
+            if (targetGetter != null && !targetGetter.IsAbstract)
+                harmony.Patch(targetGetter, postfix: new HarmonyMethod(typeof(MergedCards), nameof(AfterTargetType)));
         }
     }
 
-    static void AfterPlay(ref Task __result, CardModel __instance,
-        MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext choiceContext,
-        MegaCrit.Sts2.Core.Entities.Cards.CardPlay cardPlay)
+    static void AfterTargetType(CardModel __instance, ref TargetType __result)
     {
         var second = Second(__instance);
-        if (second != null) __result = PlaySecond(__result, second, choiceContext, cardPlay);
+        // Если хотя бы одна часть требует выбора врага, итоговая карта тоже его запрашивает.
+        // Эффекты на себя выбранную цель игнорируют, атакующая часть получает её в CardPlay.
+        if (second?.TargetType == TargetType.AnyEnemy) __result = TargetType.AnyEnemy;
+    }
+
+    static void CapturePlay(CardModel __instance, MegaCrit.Sts2.Core.Entities.Cards.CardPlay cardPlay) =>
+        PlayData[__instance] = cardPlay;
+
+    [HarmonyPatch(typeof(CardModel), nameof(CardModel.OnPlayWrapper))]
+    static class FinishPlay
+    {
+        static void Postfix(CardModel __instance, ref Task __result,
+            MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext choiceContext)
+        {
+            var second = Second(__instance);
+            if (second == null || !PlayData.Remove(__instance, out var firstPlayData)) return;
+            // Сначала игра полностью завершает первую карту и убирает её в ResultPile.
+            // Только затем выполняем дополнительный эффект, не блокируя визуальную очередь.
+            __result = PlaySecond(__result, second, choiceContext, firstPlayData);
+        }
     }
 
     static async Task PlaySecond(Task firstPlay, CardModel second,
@@ -139,19 +163,26 @@ public static class MergedCards
         Parts[clone] = secondClone;
     }
 
-    // Description — LocString. Создаём динамическую запись локализации с уже
-    // отформатированными значениями обеих карт, включая переменные второй карты.
-    [HarmonyPatch(typeof(CardModel), nameof(CardModel.Description), MethodType.Getter)]
+    // Объединяем уже полностью отформатированные строки. Патч Description здесь не подходит:
+    // он возвращает LocString без DynamicVars, поэтому {Block} и {Damage} оставались сырым текстом.
+    [HarmonyPatch(typeof(CardModel), nameof(CardModel.GetDescriptionForPile),
+        typeof(PileType), typeof(Creature))]
     static class CombinedDescription
     {
-        static void Postfix(CardModel __instance, ref LocString __result)
+        static void Postfix(CardModel __instance, ref string __result, PileType pileType, Creature target)
         {
             var second = Second(__instance);
-            if (second == null) return;
-            string text = __result.GetFormattedText() + "\n\n" + second.Description.GetFormattedText();
-            string key = "KOLYA_MERGED_CARD_" + System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(__instance);
-            FuseText.SetDynamic(key, text);
-            __result = new LocString("rest_site_ui", key);
+            if (second != null) __result += "\n\n" + second.GetDescriptionForPile(pileType, target);
+        }
+    }
+
+    [HarmonyPatch(typeof(CardModel), nameof(CardModel.GetDescriptionForUpgradePreview))]
+    static class CombinedUpgradeDescription
+    {
+        static void Postfix(CardModel __instance, ref string __result)
+        {
+            var second = Second(__instance);
+            if (second != null) __result += "\n\n" + second.GetDescriptionForUpgradePreview();
         }
     }
 
@@ -165,6 +196,22 @@ public static class MergedCards
     static class CloneForPlayer
     {
         static void Postfix(CardModel __instance, CardModel __result) => CloneParts(__instance, __result);
+    }
+
+    // Экран подробного просмотра использует MutableClone, а не CreateClone.
+    [HarmonyPatch(typeof(AbstractModel), nameof(AbstractModel.MutableClone))]
+    static class InspectClone
+    {
+        static void Postfix(AbstractModel __instance, AbstractModel __result)
+        {
+            if (__instance is not CardModel first || __result is not CardModel clone) return;
+            CloneParts(first, clone);
+            // MutableClone копирует зачарование, но не повторяет его ModifyCard: у «Острой»
+            // значок есть, а прибавка к BaseValue теряется. Копия для просмотра должна точно
+            // повторять уже рассчитанные значения оригинала, без повторного наложения бонусов.
+            foreach (var kv in clone.DynamicVars)
+                if (first.DynamicVars.TryGetValue(kv.Key, out var source)) kv.Value.BaseValue = source.BaseValue;
+        }
     }
 
     [HarmonyPatch(typeof(CardModel), nameof(CardModel.ToSerializable))]

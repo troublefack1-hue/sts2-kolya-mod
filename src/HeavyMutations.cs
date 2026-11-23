@@ -377,7 +377,9 @@ public static class HeavyMutations
         static void Postfix(ref decimal __result, Creature target, Creature? dealer,
             MegaCrit.Sts2.Core.Entities.Cards.CardPreviewMode previewMode)
         {
-            if (previewMode != CardPreviewMode.None) return;
+            // При наведении и для карт без вражеской цели target может быть null.
+            // ConditionalWeakTable.TryGetValue(null) прерывал предпросмотр и оставлял карту зависшей.
+            if (target == null || previewMode != CardPreviewMode.None) return;
             if (__result <= 0 || dealer == null) return;
             // личинка/феникс: гасим смертельный удар — враг остаётся с 1 ОЗ
             // (личинка 3 перерождения, феникс 2)

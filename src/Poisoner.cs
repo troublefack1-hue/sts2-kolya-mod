@@ -25,7 +25,7 @@ public static class Poisoner
     public static int PoisonFor(int actIndex) => System.Math.Max(actIndex - 1, 1);
 
     [HarmonyPatch(typeof(CreatureCmd), nameof(CreatureCmd.Damage),
-        typeof(PlayerChoiceContext), typeof(IEnumerable<Creature>), typeof(decimal), typeof(ValueProp), typeof(Creature), typeof(CardModel))]
+        typeof(PlayerChoiceContext), typeof(IEnumerable<Creature>), typeof(decimal), typeof(ValueProp), typeof(Creature))]
     static class OnHit
     {
         static void Postfix(PlayerChoiceContext choiceContext, IEnumerable<Creature> targets, ValueProp props, Creature? dealer,
